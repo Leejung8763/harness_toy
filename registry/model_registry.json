@@ -1,0 +1,82 @@
+{
+  "models": [
+    {
+      "version": "v1",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.41,
+      "model_path": "models/champion_credit_v1.pkl",
+      "trained_at": "2026-04-11T00:08:51.741232"
+    },
+    {
+      "version": "v2",
+      "status": "evaluated_fail",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.54,
+      "model_path": "models/champion_credit_v2.pkl",
+      "trained_at": "2026-04-11T00:09:05.302350"
+    },
+    {
+      "version": "v3",
+      "status": "rolled_back",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.44,
+      "model_path": "models/champion_credit_v3.pkl",
+      "trained_at": "2026-04-11T00:10:17.594838"
+    },
+    {
+      "version": "v4",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.37,
+      "model_path": "models/champion_credit_v4.pkl",
+      "trained_at": "2026-04-11T00:12:12.648511"
+    },
+    {
+      "version": "v5",
+      "status": "rolled_back",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.39,
+      "model_path": "models/champion_credit_v5.pkl",
+      "trained_at": "2026-04-11T00:12:29.522671"
+    },
+    {
+      "version": "v6",
+      "status": "deployed",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.41,
+      "model_path": "models/champion_credit_v6.pkl",
+      "trained_at": "2026-04-11T00:14:17.066122"
+    }
+  ]
+}

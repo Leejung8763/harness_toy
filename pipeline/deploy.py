@@ -1,0 +1,117 @@
+"""
+pipeline/deploy.py — 상태 전이 + Feature Flag 업데이트
+
+규칙:
+  - 'evaluated_pass' 상태 모델만 배포 가능 (invariant)
+  - 배포 시: 신규 → 'deployed', 기존 deployed → 'retired'
+  - Feature Flag는 반드시 이 모듈을 통해서만 변경 (직접 수정 금지)
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+REGISTRY_PATH = Path("registry/model_registry.json")
+FLAGS_PATH = Path("feature_flags/flags.json")
+
+
+def deploy(version: str | None = None) -> bool:
+    """
+    'evaluated_pass' 모델을 배포합니다.
+
+    Args:
+        version: 배포할 버전 (None이면 최신 evaluated_pass 모델)
+
+    Returns:
+        bool: True(성공) / False(실패)
+    """
+    registry = _load_registry()
+    candidate = _get_candidate(registry, version)
+
+    if candidate is None:
+        print("[deploy] ❌ 배포 가능한 'evaluated_pass' 모델이 없습니다.")
+        return False
+
+    print(f"\n[deploy] 배포 대상: {candidate['model_name']}  {candidate['version']}  "
+          f"(dataset={candidate['dataset_name']})")
+
+    # 기존 deployed → retired
+    retired = _retire_current(registry, candidate["version"])
+    if retired:
+        print(f"  이전 champion {retired['version']} → retired")
+
+    # 신규 → deployed
+    candidate["status"] = "deployed"
+    _save_registry(registry)
+    print(f"  {candidate['version']} → deployed ✅")
+
+    # Feature Flag 업데이트
+    _update_flags(candidate)
+    print(f"  flags.json → active_model_version={candidate['version']}")
+
+    return True
+
+
+def _get_candidate(registry: dict, version: str | None) -> dict | None:
+    """배포할 후보(evaluated_pass 상태)를 반환합니다."""
+    candidates = [m for m in registry.get("models", []) if m["status"] == "evaluated_pass"]
+    if not candidates:
+        return None
+    if version:
+        matched = [m for m in candidates if m["version"] == version]
+        return matched[0] if matched else None
+    return candidates[-1]  # 최신 evaluated_pass
+
+
+def _retire_current(registry: dict, exclude_version: str) -> dict | None:
+    """현재 deployed 모델을 retired로 변경하고 반환합니다."""
+    for model in registry.get("models", []):
+        if model["status"] == "deployed" and model["version"] != exclude_version:
+            model["status"] = "retired"
+            return model
+    return None
+
+
+def _update_flags(deployed: dict) -> None:
+    """Feature Flag를 업데이트합니다. 이 함수를 통해서만 flags.json을 변경합니다."""
+    flags = _load_flags()
+    flags["active_model_version"] = deployed["version"]
+    flags["active_dataset_id"] = deployed["dataset_id"]
+    _save_flags(flags)
+
+
+def load_flags() -> dict:
+    return _load_flags()
+
+
+def _load_flags() -> dict:
+    if FLAGS_PATH.exists():
+        with open(FLAGS_PATH) as f:
+            return json.load(f)
+    return {"active_model_version": None, "active_dataset_id": None}
+
+
+def _save_flags(flags: dict) -> None:
+    FLAGS_PATH.parent.mkdir(exist_ok=True)
+    with open(FLAGS_PATH, "w") as f:
+        json.dump(flags, f, indent=2)
+
+
+def _load_registry() -> dict:
+    if REGISTRY_PATH.exists():
+        with open(REGISTRY_PATH) as f:
+            return json.load(f)
+    return {"models": []}
+
+
+def _save_registry(registry: dict) -> None:
+    with open(REGISTRY_PATH, "w") as f:
+        json.dump(registry, f, indent=2)
+
+
+if __name__ == "__main__":
+    import sys
+    version = sys.argv[1] if len(sys.argv) > 1 else None
+    success = deploy(version)
+    sys.exit(0 if success else 1)

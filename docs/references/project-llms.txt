@@ -1,0 +1,29 @@
+# Project Reference (LLM-optimized)
+
+> AI 에이전트가 최소 컨텍스트로 이 프로젝트를 파악할 수 있도록 압축한 참조 문서입니다.
+> 상세 내용은 AGENTS.md → 각 문서로 이동하세요.
+
+## Project Purpose
+TODO: 한 줄 설명
+
+## Layer Structure
+TODO → TODO → TODO → TODO
+
+## Key Invariants
+1. TODO
+2. TODO
+
+## Public API / Entry Points
+TODO: 주요 함수/명령어 시그니처
+
+## Naming Conventions
+TODO: snake_case / PascalCase / UPPER_SNAKE 등 규칙
+
+## Error Handling Pattern
+TODO: 예외 던지기 vs bool 반환 vs 기타
+
+## Quality Gates
+TODO: 임계값 요약
+
+## Forbidden Patterns
+TODO: 절대 하지 말아야 할 코드 패턴
