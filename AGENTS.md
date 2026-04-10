@@ -8,14 +8,39 @@
 
 ## 프로젝트 목적
 
-> TODO: 이 프로젝트가 왜 존재하는지 한 문단으로 작성하세요.
+OpenAI Harness 방식을 실습하기 위한 MLOps 장난감 파이프라인입니다.
+Data → Train → Evaluate → Deploy → Monitor 전 사이클을 로컬에서 재현하며,
+CI/CD Stage(build/test/package)까지 포함한 완전한 ML 시스템 구조를 학습합니다.
 
 ---
 
 ## 빠른 시작
 
 ```bash
-# TODO: 환경 셋업 및 실행 명령
+# CI/CD 전체 실행 (build → test → package)
+./ci/run.sh
+
+# CI/CD + ML 파이프라인까지 실행
+./ci/run.sh --full
+
+# 전체 파이프라인 실행
+python harness_pipeline.py
+
+# 드리프트 롤백 시나리오 시연
+python harness_pipeline.py --drift
+
+# 다른 데이터셋으로 실행
+python harness_pipeline.py --dataset-id 44120
+
+# 개별 스테이지 실행
+python pipeline/train.py [dataset_id]
+python pipeline/evaluate.py
+python pipeline/deploy.py
+python pipeline/monitor.py [--drift]
+python pipeline/predict.py
+
+# 단위 테스트만 실행
+make test
 ```
 
 ---
@@ -23,7 +48,30 @@
 ## 프로젝트 구조
 
 ```
-TODO: 디렉토리 트리를 여기에 작성하세요
+harness_toy/
+├── harness_pipeline.py        # 전체 파이프라인 오케스트레이터
+├── Makefile                   # CI/CD 타겟 (build/test/package/pipeline)
+├── ci/
+│   └── run.sh                 # 로컬 CI/CD 실행 스크립트
+├── data/
+│   └── loader.py              # 데이터 경계 검증 진입점 (OpenML)
+├── pipeline/
+│   ├── train.py               # Challenger 학습 → Champion 선정
+│   ├── evaluate.py            # Quality Gate (ROC-AUC 기준)
+│   ├── deploy.py              # 상태 전이 + Feature Flag 업데이트
+│   ├── monitor.py             # 배포 후 성능 모니터링 + 자동 롤백
+│   └── predict.py             # Feature Flag 기반 예측 서빙
+├── tests/
+│   ├── test_evaluate.py       # Quality Gate 단위 테스트
+│   ├── test_deploy.py         # 상태 전이 단위 테스트
+│   ├── test_monitor.py        # 임계값 검사 단위 테스트
+│   └── test_predict.py        # 입력 검증 단위 테스트
+├── registry/
+│   └── model_registry.json    # 모델 버전 및 상태 기록
+├── feature_flags/
+│   └── flags.json             # 현재 서빙 모델 버전 (deploy.py를 통해서만 변경)
+├── models/                    # 학습된 모델 pkl 파일
+└── docs/                      # 설계 문서 (아래 색인 참조)
 ```
 
 ---
@@ -50,8 +98,10 @@ TODO: 디렉토리 트리를 여기에 작성하세요
 
 > 구현 방식은 AI에게 맡기되, 아래 경계는 반드시 지켜야 합니다.
 
-1. TODO: 첫 번째 invariant
-2. TODO: 두 번째 invariant
+1. **데이터 경계**: 외부 데이터는 반드시 `data/loader.py`를 통해서만 시스템에 진입한다.
+2. **Feature Flag**: `flags.json`은 반드시 `pipeline/deploy.py`를 통해서만 변경한다.
+3. **배포 순서**: `evaluated_pass` 상태인 모델만 deploy 가능하다 (trained → evaluated_pass → deployed).
+4. **의존성 방향**: `pipeline/` → `data/` 단방향만 허용. 역방향 import 금지.
 
 ---
 
@@ -86,4 +136,8 @@ python pipeline/predict.py
 ### [규칙 1] `from data.loader import ...` — ModuleNotFoundError
 - **원인**: Python이 프로젝트 루트를 모듈 경로로 인식하지 못함
 - **해결**: `.venv/lib/python3.*/site-packages/harness_mlops.pth`에 프로젝트 루트 경로 등록됨
-- **신규 환경 셋업 시**: `echo "$(pwd)" > .venv/lib/python3.*/site-packages/harness_mlops.pth`
+- **신규 환경 셋업 시**: 프로젝트 루트 경로를 `.pth` 파일에 수동 등록
+
+### [규칙 2] `.venv` 인터프리터 오류
+- **원인**: `.venv`가 다른 경로의 Python을 참조 중 (bad interpreter)
+- **해결**: `python3` / `pip3` 직접 사용. Makefile과 ci/run.sh는 system python3 사용
