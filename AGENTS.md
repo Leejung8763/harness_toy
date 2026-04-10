@@ -17,30 +17,27 @@ CI/CD Stage(build/test/package)까지 포함한 완전한 ML 시스템 구조를
 ## 빠른 시작
 
 ```bash
-# CI/CD 전체 실행 (build → test → package)
+# ① CI/CD Stage — 코드 검증 (Build → Test → Package)
 ./ci/run.sh
 
-# CI/CD + ML 파이프라인까지 실행
-./ci/run.sh --full
+# ② Automated Pipeline — ML 파이프라인 실행 (CI/CD 통과 후)
+./ci/trigger_pipeline.sh
+./ci/trigger_pipeline.sh --drift           # 드리프트 롤백 시나리오
+./ci/trigger_pipeline.sh --dataset-id 44120
 
-# 전체 파이프라인 실행
-python harness_pipeline.py
-
-# 드리프트 롤백 시나리오 시연
-python harness_pipeline.py --drift
-
-# 다른 데이터셋으로 실행
-python harness_pipeline.py --dataset-id 44120
+# 개별 Make 타겟
+make build      # 의존성 설치 + 문법 검사
+make test       # 단위 테스트 (23개)
+make package    # wheel 빌드
+make pipeline   # ML 파이프라인 직접 실행
+make all        # build + test + package
 
 # 개별 스테이지 실행
-python pipeline/train.py [dataset_id]
-python pipeline/evaluate.py
-python pipeline/deploy.py
-python pipeline/monitor.py [--drift]
-python pipeline/predict.py
-
-# 단위 테스트만 실행
-make test
+python3 pipeline/train.py [dataset_id]
+python3 pipeline/evaluate.py
+python3 pipeline/deploy.py
+python3 pipeline/monitor.py [--drift]
+python3 pipeline/predict.py
 ```
 
 ---
