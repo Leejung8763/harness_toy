@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# ci/start_server.sh — ML Prediction Service 로컬 실행
+# ci/start_server.sh — ML Prediction Service 로컬 실행 (port 8000)
+#
+# 다이어그램: CD Stage: ML Model Serving → ML Prediction Service (Operations)
 #
 # 사용법:
 #   ./ci/start_server.sh           # 포그라운드 실행

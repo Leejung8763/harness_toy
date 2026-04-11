@@ -1,11 +1,12 @@
 """
-pipeline/monitor.py — 배포 후 성능 모니터링 + 자동 롤백
+pipeline/monitor.py — 배포 후 성능 모니터링 + 자동 롤백 + Trigger
 
 규칙:
   - deployed 모델의 성능을 주기적으로 확인 (시뮬레이션)
   - CV_THRESHOLDS 위반 시 사람 개입 없이 자동 롤백
   - 롤백: 현재 모델 → 'rolled_back', flags.json → 이전 버전으로 복원
   - 이전 버전이 없으면 → flags.json 비활성화
+  - 롤백 후 Automated Pipeline 서버에 재학습 요청 (Trigger)
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from pipeline.predict import _load_active_model, _load_flags, _load_registry
 
 REGISTRY_PATH = Path("registry/model_registry.json")
 FLAGS_PATH = Path("feature_flags/flags.json")
+PIPELINE_SERVER_URL = "http://localhost:8001"
 
 CV_THRESHOLDS = {
     "roc_auc": 0.75,      # 배포 시 기준보다 낮게 설정 (운영 중 허용 하한)
@@ -71,6 +73,7 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
             print(f"  {round_num:<8} {metrics['roc_auc']:>8.4f}  {metrics['error_rate']:>10.4f}  {status}")
             print(f"\n  🚨 임계값 위반: {violation}")
             _rollback(version)
+            _trigger_retraining(entry["dataset_id"])
             return False
 
         print(f"  {round_num:<8} {metrics['roc_auc']:>8.4f}  {metrics['error_rate']:>10.4f}  {status}")
@@ -122,6 +125,31 @@ def _check_thresholds(metrics: dict) -> str | None:
         return (f"error_rate={metrics['error_rate']:.4f} > "
                 f"threshold={CV_THRESHOLDS['error_rate']}")
     return None
+
+
+def _trigger_retraining(dataset_id: int) -> None:
+    """
+    Automated Pipeline 서버에 재학습을 요청합니다. (Operations → Trigger)
+
+    서버가 실행 중이면 HTTP POST, 아니면 경고만 출력합니다.
+    """
+    try:
+        import httpx
+        r = httpx.post(
+            f"{PIPELINE_SERVER_URL}/pipeline/run",
+            json={"dataset_id": dataset_id},
+            timeout=5.0,
+        )
+        if r.status_code == 202:
+            run_id = r.json().get("run_id", "?")
+            print(f"  🔄 Trigger → Automated Pipeline  run_id={run_id}")
+        elif r.status_code == 409:
+            print(f"  ⚠️  파이프라인 이미 실행 중 (재학습 요청 스킵)")
+        else:
+            print(f"  ⚠️  재학습 요청 실패 (HTTP {r.status_code})")
+    except Exception:
+        print(f"  ⚠️  Automated Pipeline 서버 미연결 — 수동 재실행 필요")
+        print(f"       ./ci/start_pipeline_server.sh 후 ./ci/trigger_pipeline.sh")
 
 
 def _rollback(current_version: str) -> None:

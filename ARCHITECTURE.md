@@ -5,7 +5,29 @@
 
 ---
 
-## 레이어 구조
+## 서비스 구조
+
+```
+CI/CD Stage          ci/run.sh
+       │ POST /pipeline/run
+       ▼
+Automated Pipeline   api/pipeline_server.py  (port 8001)
+  ├─ data_engineering.py
+  ├─ train.py  ←── feature_store/
+  ├─ evaluate.py
+  └─ deploy.py ───► registry/ + feature_flags/
+       │
+       ▼
+ML Prediction Service  api/serve.py  (port 8000)
+  └─ predict.py
+       │
+       ▼
+Performance Monitoring  pipeline/monitor.py
+       │ POST /pipeline/run (Trigger)
+       └──────────────────────────────► api/pipeline_server.py
+```
+
+
 
 의존성은 **아래 방향으로만** 흐릅니다.
 
