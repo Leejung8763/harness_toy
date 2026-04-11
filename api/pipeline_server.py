@@ -47,6 +47,8 @@ _lock = threading.Lock()
 class PipelineRunRequest(BaseModel):
     dataset_id: int = 44089
     inject_drift: bool = False
+    trigger_reason: Literal["drift", "ci_cd", "manual", "scheduled"] = "ci_cd"
+    use_agent: bool = True
 
 
 class PipelineStatusResponse(BaseModel):
@@ -85,7 +87,7 @@ def run_pipeline(req: PipelineRunRequest) -> dict:
 
     thread = threading.Thread(
         target=_execute_pipeline,
-        args=(req.dataset_id, req.inject_drift),
+        args=(req.dataset_id, req.inject_drift, req.trigger_reason, req.use_agent),
         daemon=True,
     )
     thread.start()
@@ -100,10 +102,26 @@ def pipeline_status() -> PipelineStatusResponse:
         return PipelineStatusResponse(**_state)
 
 
-def _execute_pipeline(dataset_id: int, inject_drift: bool) -> None:
+def _execute_pipeline(dataset_id: int, inject_drift: bool, trigger_reason: str, use_agent: bool) -> None:
     """백그라운드 스레드에서 파이프라인을 실행합니다."""
+    skip_stages: list[str] = []
     try:
-        harness_pipeline.run(dataset_id=dataset_id, inject_drift=inject_drift)
+        from agents.orchestrator_agent import plan_pipeline
+        plan = plan_pipeline(
+            trigger_reason=trigger_reason,
+            dataset_id=dataset_id,
+            use_agent=use_agent,
+        )
+        skip_stages = plan.skip_stages
+    except Exception as e:
+        print(f"  ⚠️  orchestrator_agent 호출 실패: {e} → 전체 실행")
+
+    try:
+        harness_pipeline.run(
+            dataset_id=dataset_id,
+            inject_drift=inject_drift,
+            skip_stages=skip_stages,
+        )
         with _lock:
             _state.update({
                 "status": "completed",

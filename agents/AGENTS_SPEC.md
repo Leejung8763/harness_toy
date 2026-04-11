@@ -90,11 +90,43 @@
 
 ---
 
-### 3. pipeline_orchestrator_agent — 파이프라인 오케스트레이터 에이전트 *(예정)*
+### 3. pipeline_orchestrator_agent — 파이프라인 오케스트레이터 에이전트
 
 | 항목 | 내용 |
 |------|------|
-| **파일** | `agents/orchestrator_agent.py` (미구현) |
-| **호출 위치** | `api/pipeline_server.py` |
-| **입력** | 시스템 전체 상태, 트리거 원인 |
-| **출력** | 실행할 파이프라인 스테이지 결정 |
+| **파일** | `agents/orchestrator_agent.py` |
+| **호출 위치** | `api/pipeline_server.py:_execute_pipeline()` |
+| **입력** | trigger_reason, dataset_id, 시스템 상태 (Feature Store / Registry / 최근 실행) |
+| **출력** | `RunPlan`: 실행 스테이지 목록 + 스킵 스테이지 + 근거 |
+| **모델** | gpt-4o-mini (GitHub Models API) |
+
+#### 참고 문서
+| 문서 | 용도 |
+|------|------|
+| `config/thresholds.json` | 임계값 기준 |
+| `registry/model_registry.json` | 현재 배포 모델 상태 |
+| `feature_store/features/*/v1/meta.json` | Feature Store 신선도 확인 |
+| `ml_metadata/runs.json` | 최근 파이프라인 실행 이력 |
+
+#### 스킬 (할 수 있는 것)
+- ✅ Feature Store 신선도 확인 (age_hours 계산)
+- ✅ 배포 모델 상태 조회
+- ✅ trigger_reason에 따른 스테이지 최적화
+- ✅ 스킵 가능 스테이지 결정 및 근거 반환
+
+#### 권한 범위 (할 수 없는 것)
+- ❌ 실제 파이프라인 실행 금지 (harness_pipeline.py가 담당)
+- ❌ registry/flags.json 수정 금지
+- ❌ 다른 에이전트 직접 호출 금지
+
+#### 스테이지 스킵 판단 기준
+| trigger_reason | data_eng 스킵 조건 |
+|---|---|
+| `ci_cd` | 항상 전체 실행 (코드 변경) |
+| `drift` | Feature Store age < 24h 이면 스킵 |
+| `manual` | Feature Store age < 24h 이면 스킵 |
+| `scheduled` | Feature Store age < 24h 이면 스킵 |
+
+#### fallback 동작
+- LLM 호출 실패 → rule-based 계획 (Feature Store 신선도만 체크)
+- rule-based 실패 → 전체 파이프라인 실행

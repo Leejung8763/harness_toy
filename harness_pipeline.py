@@ -35,27 +35,41 @@ STAGES = [
 ]
 
 
-def run(dataset_id: int = 44089, inject_drift: bool = False) -> bool:
+def run(
+    dataset_id: int = 44089,
+    inject_drift: bool = False,
+    skip_stages: list[str] | None = None,
+) -> bool:
     """
     전체 파이프라인을 순서대로 실행합니다.
 
     Args:
         dataset_id: 학습에 사용할 OpenML 데이터셋 ID
         inject_drift: True면 Monitor 단계에서 드리프트를 주입
+        skip_stages: 건너뛸 스테이지 목록 (None이면 전체 실행)
+            예: ["data_eng"] — Feature Store 신선 시 Data Engineering 스킵
 
     Returns:
         bool: 전 스테이지 성공 시 True
     """
+    skip = set(skip_stages or [])
     print(BANNER)
+    if skip:
+        print(f"  ⏭️  스킵 스테이지: {sorted(skip)}\n")
 
     # Stage 1 — Data Engineering
-    print("=" * 50)
-    print("  STAGE 1 / 5  —  Data Engineering (Feature Store)")
-    print("=" * 50)
-    de_result = run_data_engineering(dataset_id)
-    if de_result is None:
-        _abort("Data Engineering")
-        return False
+    if "data_eng" in skip:
+        print("=" * 50)
+        print("  STAGE 1 / 5  —  Data Engineering (⏭️  스킵 — Feature Store 재사용)")
+        print("=" * 50)
+    else:
+        print("=" * 50)
+        print("  STAGE 1 / 5  —  Data Engineering (Feature Store)")
+        print("=" * 50)
+        de_result = run_data_engineering(dataset_id)
+        if de_result is None:
+            _abort("Data Engineering")
+            return False
 
     # Stage 2 — Train
     print("\n" + "=" * 50)
