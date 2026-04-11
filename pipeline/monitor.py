@@ -225,20 +225,19 @@ def _trigger_retraining(dataset_id: int) -> None:
 
 
 def _rollback(current_version: str) -> None:
-    """현재 모델을 rolled_back으로 변경하고 이전 버전을 복원합니다."""
+    """이전 버전이 있으면 롤백, 없으면 현재 모델 유지(degraded mode)."""
     registry = _load_registry()
-
-    # 현재 모델 → rolled_back
-    for m in registry["models"]:
-        if m["version"] == current_version:
-            m["status"] = "rolled_back"
-            break
 
     # 이전 retired 모델 중 가장 최근 것을 복원
     retired = [m for m in registry["models"] if m["status"] == "retired"]
     flags = _load_flags()
 
     if retired:
+        # 이전 모델 존재 → 롤백
+        for m in registry["models"]:
+            if m["version"] == current_version:
+                m["status"] = "rolled_back"
+                break
         prev = retired[-1]
         prev["status"] = "deployed"
         flags["active_model_version"] = prev["version"]
@@ -246,10 +245,9 @@ def _rollback(current_version: str) -> None:
         print(f"  ↩️  롤백 완료: {current_version} → rolled_back, "
               f"{prev['version']} → deployed")
     else:
-        flags["active_model_version"] = None
-        flags["active_dataset_id"] = None
-        print(f"  ↩️  롤백 완료: {current_version} → rolled_back  "
-              f"(복원할 이전 버전 없음, 서비스 중단)")
+        # 이전 모델 없음 → 현재 모델 유지(서비스 중단 방지) + 재학습으로 교체 예정
+        print(f"  ⚠️  복원할 이전 버전 없음 — {current_version} 유지 (degraded mode)")
+        print(f"      재학습 완료 후 새 모델로 교체됩니다.")
 
     _save_registry(registry)
     _save_flags(flags)
