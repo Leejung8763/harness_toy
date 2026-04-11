@@ -162,7 +162,10 @@ harness_toy/
 - **해결**: `ci/test_api.py`의 `_make_sample_features()`가 실제 `feature_names_in_` 사용하도록 수정됨
 - **확인**: `python3 ci/test_api.py` 실행 시 모든 테스트 통과 확인
 
-### [규칙 5] 포트 충돌 — `[Errno 48] address already in use`
+### [규칙 6] `'dict' object has no attribute 'append'` — ml_metadata 파일 형식 오류
+- **원인**: `ml_metadata/runs.json`이 `{"next_version": 1, "runs": []}` (dict) 형식으로 남아있음
+- **해결**: `echo '[]' > ml_metadata/runs.json` 으로 list 형식으로 교체
+- **발생 시점**: `ci/reset.sh` 수정 전에 생성된 파일이 잔존할 때
 - **원인**: 이전 서버 프로세스가 종료되지 않은 상태에서 재시작 시도
 - **해결**: `lsof -ti:8000 | xargs kill -9` / `lsof -ti:8001 | xargs kill -9`
 
