@@ -243,5 +243,17 @@
     "ks_pvalue_min": 0.2263,
     "violation": null,
     "inject_drift": false
+  },
+  {
+    "stage": "training",
+    "logged_at": "2026-04-12T01:44:44.254109",
+    "model_version": "v3",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "champion_model": "hist_gradient_boosting",
+    "roc_auc": 0.8622,
+    "fit_time_sec": 0.5,
+    "n_challengers": 5
   }
 ]

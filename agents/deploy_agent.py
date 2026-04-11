@@ -19,6 +19,8 @@ from pathlib import Path
 
 REGISTRY_PATH = Path("registry/model_registry.json")
 METADATA_PATH = Path("ml_metadata/runs.json")
+THRESHOLDS_PATH = Path("config/thresholds.json")
+QUALITY_SCORE_PATH = Path("docs/QUALITY_SCORE.md")
 
 
 def _get_github_token() -> str:
@@ -77,11 +79,17 @@ def _build_context(version: str) -> dict | None:
     training_runs = [r for r in runs if r.get("stage") == "training"]
     latest_training = training_runs[-1] if training_runs else {}
 
+    # config/thresholds.json에서 기준값 로드
+    thresholds = {}
+    if THRESHOLDS_PATH.exists():
+        thresholds = json.loads(THRESHOLDS_PATH.read_text())
+
     return {
         "candidate": candidate,
         "champion": champion,
         "latest_training": latest_training,
         "total_versions": len(registry["models"]),
+        "thresholds": thresholds,
     }
 
 
@@ -89,6 +97,12 @@ def _build_prompt(ctx: dict) -> str:
     candidate = ctx["candidate"]
     champion = ctx["champion"]
     training = ctx["latest_training"]
+    thresholds = ctx.get("thresholds", {})
+
+    evaluate_cfg = thresholds.get("evaluate", {})
+    monitor_cfg = thresholds.get("monitor", {})
+    baseline = evaluate_cfg.get("roc_auc_baseline", 0.70)
+    roc_min = monitor_cfg.get("roc_auc_min", 0.75)
 
     champion_info = (
         f"현재 배포 중인 챔피언: {champion['version']} "
@@ -114,10 +128,15 @@ def _build_prompt(ctx: dict) -> str:
 - 학습 샘플 수: {training.get('n_train_samples', 'N/A')}
 - 피처 수: {training.get('n_features', 'N/A')}
 
+## 시스템 임계값 (config/thresholds.json 기준)
+- 첫 배포 최소 ROC-AUC: {baseline}
+- 운영 중 최소 ROC-AUC: {roc_min}
+
 ## 판단 기준
-1. ROC-AUC가 챔피언보다 높거나 같으면 일반적으로 배포
-2. 성능 차이가 0.001 미만이면 변경 비용 대비 효익이 낮음
-3. 첫 배포는 ROC-AUC >= 0.70이면 배포
+1. ROC-AUC가 챔피언보다 높거나 같으면 일반적으로 deploy
+2. 성능 차이가 0.001 미만이면 변경 비용 대비 효익이 낮음 → hold
+3. ROC-AUC < {baseline}이면 reject
+4. 첫 배포(챔피언 없음)는 {baseline} 충족 시 deploy
 
 ## 응답 형식 (JSON만 반환)
 {{

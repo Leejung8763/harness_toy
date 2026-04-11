@@ -25,6 +25,19 @@
       "fit_time_sec": 0.51,
       "model_path": "models/champion_credit_v2.pkl",
       "trained_at": "2026-04-12T01:16:34.539973"
+    },
+    {
+      "version": "v3",
+      "status": "evaluated_pass",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.5,
+      "model_path": "models/champion_credit_v3.pkl",
+      "trained_at": "2026-04-12T01:44:44.253551"
     }
   ]
 }
