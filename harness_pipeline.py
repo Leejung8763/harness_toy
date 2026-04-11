@@ -14,16 +14,17 @@ from __future__ import annotations
 import argparse
 import sys
 
+from pipeline.data_engineering import run_data_engineering
 from pipeline.deploy import deploy
 from pipeline.evaluate import evaluate
 from pipeline.monitor import monitor
 from pipeline.train import train
 
 BANNER = """
-╔══════════════════════════════════════════╗
-║       Harness MLOps Pipeline             ║
-║  Data → Train → Evaluate → Deploy → Monitor  ║
-╚══════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════╗
+║             Harness MLOps Pipeline                   ║
+║  Data Eng → Train → Evaluate → Deploy → Monitor     ║
+╚══════════════════════════════════════════════════════╝
 """
 
 STAGES = [
@@ -47,34 +48,43 @@ def run(dataset_id: int = 44089, inject_drift: bool = False) -> bool:
     """
     print(BANNER)
 
-    # Stage 1 — Train
+    # Stage 1 — Data Engineering
     print("=" * 50)
-    print("  STAGE 1 / 4  —  Train (Champion Selection)")
+    print("  STAGE 1 / 5  —  Data Engineering (Feature Store)")
+    print("=" * 50)
+    de_result = run_data_engineering(dataset_id)
+    if de_result is None:
+        _abort("Data Engineering")
+        return False
+
+    # Stage 2 — Train
+    print("\n" + "=" * 50)
+    print("  STAGE 2 / 5  —  Train (Champion Selection)")
     print("=" * 50)
     train_result = train(dataset_id)
     if not train_result:
         _abort("Train")
         return False
 
-    # Stage 2 — Evaluate (Quality Gate)
+    # Stage 3 — Evaluate (Quality Gate)
     print("\n" + "=" * 50)
-    print("  STAGE 2 / 4  —  Evaluate (Quality Gate)")
+    print("  STAGE 3 / 5  —  Evaluate (Quality Gate)")
     print("=" * 50)
     if not evaluate():
         _abort("Evaluate")
         return False
 
-    # Stage 3 — Deploy
+    # Stage 4 — Deploy
     print("\n" + "=" * 50)
-    print("  STAGE 3 / 4  —  Deploy")
+    print("  STAGE 4 / 5  —  Deploy (CD Stage)")
     print("=" * 50)
     if not deploy():
         _abort("Deploy")
         return False
 
-    # Stage 4 — Monitor
+    # Stage 5 — Monitor
     print("\n" + "=" * 50)
-    print("  STAGE 4 / 4  —  Monitor (Continuous Verification)")
+    print("  STAGE 5 / 5  —  Monitor (Continuous Verification)")
     print("=" * 50)
     if not monitor(inject_drift=inject_drift):
         _abort("Monitor")

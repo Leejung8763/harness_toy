@@ -26,6 +26,9 @@ from sklearn.preprocessing import label_binarize
 from xgboost import XGBClassifier
 
 from data.loader import DatasetSplit, load_dataset
+import feature_store.store as fs
+import ml_metadata.store as mds
+from pipeline.data_engineering import FEATURE_VERSION
 
 MODELS_DIR = Path("models")
 REGISTRY_PATH = Path("registry/model_registry.json")
@@ -52,14 +55,24 @@ def train(dataset_id: int) -> dict:
     """
     모든 Challenger를 학습하고 Champion을 선정한 뒤 registry에 기록합니다.
 
+    Feature Store에 전처리된 피처가 있으면 재사용하고,
+    없으면 data/loader.py에서 직접 로드합니다.
+
     Returns:
         dict: champion 정보 (model_name, roc_auc, model_path, version 포함)
     """
     MODELS_DIR.mkdir(exist_ok=True)
     REGISTRY_PATH.parent.mkdir(exist_ok=True)
 
-    split = load_dataset(dataset_id)
-    print(f"\n[train] dataset={split.name} | train={len(split.X_train)} | test={len(split.X_test)}")
+    # Feature Store 우선 사용
+    if fs.exists(dataset_id, FEATURE_VERSION):
+        split = fs.load(dataset_id, FEATURE_VERSION)
+        print(f"\n[train] Feature Store 로드 — dataset={split.name} "
+              f"features={len(split.feature_names)} | train={len(split.X_train)} | test={len(split.X_test)}")
+    else:
+        split = load_dataset(dataset_id)
+        print(f"\n[train] 원시 데이터 로드 — dataset={split.name} | "
+              f"train={len(split.X_train)} | test={len(split.X_test)}")
 
     results = _train_all(split)
     _print_results(results)
@@ -69,6 +82,19 @@ def train(dataset_id: int) -> dict:
 
     model_path, version = _save_champion(champion.model_name, split)
     entry = _register(dataset_id, split.name, champion, model_path, version)
+
+    # ML Metadata Store에 학습 이력 기록
+    mds.log_training({
+        "model_version": version,
+        "dataset_id": dataset_id,
+        "dataset_name": split.name,
+        "feature_version": FEATURE_VERSION if fs.exists(dataset_id, FEATURE_VERSION) else None,
+        "champion_model": champion.model_name,
+        "roc_auc": champion.roc_auc,
+        "fit_time_sec": champion.fit_time_sec,
+        "n_challengers": len(results),
+    })
+
     return entry
 
 

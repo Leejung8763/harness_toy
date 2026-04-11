@@ -9,4 +9,4 @@ requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["data*", "pipeline*", "registry*", "feature_flags*"]
+include = ["data*", "pipeline*", "registry*", "feature_flags*", "feature_store*", "ml_metadata*"]
