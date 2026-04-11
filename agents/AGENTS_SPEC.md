@@ -58,14 +58,35 @@
 
 ---
 
-### 2. drift_agent — 드리프트 원인 분석 에이전트 *(예정)*
+### 2. drift_agent — 드리프트 원인 분석 에이전트
 
 | 항목 | 내용 |
 |------|------|
-| **파일** | `agents/drift_agent.py` (미구현) |
+| **파일** | `agents/drift_agent.py` |
 | **호출 위치** | `pipeline/monitor.py` 드리프트 감지 후 |
-| **입력** | PSI/KS-test 결과, 피처별 분포 변화 |
-| **출력** | 드리프트 원인 설명, 영향 피처 목록 |
+| **입력** | 피처별 PSI, KS-test p-value, 성능 지표 |
+| **출력** | 영향 피처 목록, 원인 설명, 재학습 제안 |
+| **모델** | gpt-4o-mini (GitHub Models API) |
+
+#### 참고 문서
+| 문서 | 용도 |
+|------|------|
+| `config/thresholds.json` | PSI/KS 임계값 기준 |
+| `docs/QUALITY_SCORE.md` | PSI 해석 기준표 |
+
+#### 스킬 (할 수 있는 것)
+- ✅ 피처별 PSI/KS 데이터 분석
+- ✅ 드리프트 원인 자연어 설명
+- ✅ 재학습 방향 제안
+- ✅ 분석 결과를 ml_metadata에 기록
+
+#### 권한 범위 (할 수 없는 것)
+- ❌ 롤백 결정 금지 (이미 rule-based로 완료된 후 호출됨)
+- ❌ 재학습 트리거 금지 (monitor.py가 담당)
+- ❌ registry/flags.json 수정 금지
+
+#### fallback 동작
+- LLM 호출 실패 → 분석 생략, 롤백/트리거는 정상 진행
 
 ---
 

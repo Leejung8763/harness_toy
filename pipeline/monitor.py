@@ -106,6 +106,18 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
 
         if violation:
             print(f"\n  🚨 임계값 위반: {violation}")
+            # drift_agent로 원인 분석
+            try:
+                from agents.drift_agent import analyze_drift
+                analyze_drift(
+                    model_version=version,
+                    feature_names=list(split.X_train.columns),
+                    psi_per_feature=metrics.get("psi_per_feature", {}),
+                    ks_pvalue_per_feature=metrics.get("ks_pvalue_per_feature", {}),
+                    metrics=metrics,
+                )
+            except Exception as e:
+                print(f"  ⚠️  drift_agent 분석 실패: {e}")
             _rollback(version)
             _trigger_retraining(entry["dataset_id"])
             return False
@@ -163,6 +175,8 @@ def _evaluate_round(
         "psi_mean": round(float(np.mean(psi_values)), 4),
         "psi_max": round(float(np.max(psi_values)), 4),
         "ks_pvalue_min": round(float(np.min(ks_pvalues)), 4),
+        "psi_per_feature": {col: round(psi, 4) for col, psi in zip(X_sample.columns, psi_values)},
+        "ks_pvalue_per_feature": {col: round(p, 4) for col, p in zip(X_sample.columns, ks_pvalues)},
     }
 
 
