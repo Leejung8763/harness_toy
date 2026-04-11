@@ -9,35 +9,49 @@
 ## 프로젝트 목적
 
 OpenAI Harness 방식을 실습하기 위한 MLOps 장난감 파이프라인입니다.
-Data → Train → Evaluate → Deploy → Monitor 전 사이클을 로컬에서 재현하며,
-CI/CD Stage(build/test/package)까지 포함한 완전한 ML 시스템 구조를 학습합니다.
+MLOps 다이어그램(DS Development → CI/CD → Automated Pipeline → Operations)의
+전 사이클을 로컬에서 서비스 분리 구조로 재현합니다.
+
+---
+
+## 서비스 구조 (다이어그램 매핑)
+
+| 다이어그램 영역 | 실행 명령 | 포트 |
+|----------------|----------|------|
+| DS Development | 코드 작성 단계 (직접 실행 없음) | — |
+| CI/CD Stage | `./ci/run.sh` | — |
+| Automated Pipeline | `./ci/start_pipeline_server.sh` | 8001 |
+| Operations (Serving) | `./ci/start_server.sh` | 8000 |
+| Operations (Trigger) | `monitor.py` 내부에서 자동 POST | → 8001 |
 
 ---
 
 ## 빠른 시작
 
 ```bash
-# ① CI/CD Stage — 코드 검증 (Build → Test → Package)
-./ci/run.sh
+# ─── 서버 시작 (각각 별도 터미널) ───────────────────────────────
+./ci/start_pipeline_server.sh     # Automated Pipeline (port 8001)
+./ci/start_server.sh              # ML Prediction Service (port 8000)
 
-# ② Automated Pipeline — ML 파이프라인 실행 (CI/CD 통과 후)
-./ci/trigger_pipeline.sh
-./ci/trigger_pipeline.sh --drift           # 드리프트 롤백 시나리오
+# ─── CI/CD Stage ─────────────────────────────────────────────────
+./ci/run.sh                       # build → test → package
+
+# ─── Automated Pipeline 실행 ─────────────────────────────────────
+./ci/trigger_pipeline.sh          # POST localhost:8001/pipeline/run
 ./ci/trigger_pipeline.sh --dataset-id 44120
+./ci/trigger_pipeline.sh --drift  # 드리프트 롤백 + Trigger 시나리오
 
-# 개별 Make 타겟
+# ─── Operations 테스트 ───────────────────────────────────────────
+python3 ci/test_api.py            # 예측 API 통합 테스트
+curl http://localhost:8000/health
+curl http://localhost:8001/pipeline/status
+
+# ─── Make 타겟 ───────────────────────────────────────────────────
 make build      # 의존성 설치 + 문법 검사
-make test       # 단위 테스트 (23개)
+make test       # 단위 테스트 (43개)
 make package    # wheel 빌드
-make pipeline   # ML 파이프라인 직접 실행
+make pipeline   # ML 파이프라인 직접 실행 (서버 없이)
 make all        # build + test + package
-
-# 개별 스테이지 실행
-python3 pipeline/train.py [dataset_id]
-python3 pipeline/evaluate.py
-python3 pipeline/deploy.py
-python3 pipeline/monitor.py [--drift]
-python3 pipeline/predict.py
 ```
 
 ---
@@ -46,29 +60,53 @@ python3 pipeline/predict.py
 
 ```
 harness_toy/
-├── harness_pipeline.py        # 전체 파이프라인 오케스트레이터
-├── Makefile                   # CI/CD 타겟 (build/test/package/pipeline)
-├── ci/
-│   └── run.sh                 # 로컬 CI/CD 실행 스크립트
+├── harness_pipeline.py            # 전체 파이프라인 오케스트레이터
+├── Makefile                       # CI/CD 타겟 (build/test/package/pipeline)
+│
+├── ci/                            # CI/CD + 서버 실행 스크립트
+│   ├── run.sh                     # CI/CD Stage (build→test→package)
+│   ├── trigger_pipeline.sh        # Automated Pipeline 트리거
+│   ├── start_pipeline_server.sh   # Pipeline Server 시작 (port 8001)
+│   ├── start_server.sh            # Prediction Server 시작 (port 8000)
+│   └── test_api.py                # Prediction API 통합 테스트
+│
+├── api/                           # 서비스 API 레이어
+│   ├── pipeline_server.py         # Automated Pipeline Service (port 8001)
+│   └── serve.py                   # ML Prediction Service (port 8000)
+│
 ├── data/
-│   └── loader.py              # 데이터 경계 검증 진입점 (OpenML)
-├── pipeline/
-│   ├── train.py               # Challenger 학습 → Champion 선정
-│   ├── evaluate.py            # Quality Gate (ROC-AUC 기준)
-│   ├── deploy.py              # 상태 전이 + Feature Flag 업데이트
-│   ├── monitor.py             # 배포 후 성능 모니터링 + 자동 롤백
-│   └── predict.py             # Feature Flag 기반 예측 서빙
-├── tests/
-│   ├── test_evaluate.py       # Quality Gate 단위 테스트
-│   ├── test_deploy.py         # 상태 전이 단위 테스트
-│   ├── test_monitor.py        # 임계값 검사 단위 테스트
-│   └── test_predict.py        # 입력 검증 단위 테스트
+│   └── loader.py                  # 데이터 경계 검증 진입점 (OpenML)
+│
+├── pipeline/                      # 파이프라인 비즈니스 로직
+│   ├── data_engineering.py        # 피처 엔지니어링 → Feature Store 저장
+│   ├── train.py                   # Challenger 학습 → Champion 선정
+│   ├── evaluate.py                # Quality Gate (ROC-AUC)
+│   ├── deploy.py                  # 상태 전이 + Feature Flag 업데이트
+│   ├── monitor.py                 # 성능 모니터링 + 롤백 + Trigger
+│   └── predict.py                 # Feature Flag 기반 예측
+│
+├── feature_store/
+│   └── store.py                   # 피처 캐시 (Parquet)
+│
+├── ml_metadata/
+│   └── store.py                   # 실험 이력·데이터 리니지 추적
+│
+├── tests/                         # 단위 테스트 (43개)
+│   ├── README.md
+│   ├── test_api.py
+│   ├── test_deploy.py
+│   ├── test_evaluate.py
+│   ├── test_feature_store.py
+│   ├── test_ml_metadata.py
+│   ├── test_monitor.py
+│   └── test_predict.py
+│
 ├── registry/
-│   └── model_registry.json    # 모델 버전 및 상태 기록
+│   └── model_registry.json        # 모델 버전 및 배포 상태
 ├── feature_flags/
-│   └── flags.json             # 현재 서빙 모델 버전 (deploy.py를 통해서만 변경)
-├── models/                    # 학습된 모델 pkl 파일
-└── docs/                      # 설계 문서 (아래 색인 참조)
+│   └── flags.json                 # 현재 서빙 모델 (deploy.py를 통해서만 변경)
+├── models/                        # 학습된 모델 pkl 파일
+└── docs/                          # 설계 문서 (아래 색인 참조)
 ```
 
 ---
@@ -77,17 +115,13 @@ harness_toy/
 
 | 문서 | 역할 |
 |------|------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 레이어 구조, 의존성 제약, 금지 패턴 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 서비스 구조, 레이어 의존성, 금지 패턴 |
 | [docs/DESIGN.md](docs/DESIGN.md) | 설계 결정의 배경(why) |
 | [docs/PLANS.md](docs/PLANS.md) | 로드맵 및 실행 계획 |
-| [docs/PRODUCT_SENSE.md](docs/PRODUCT_SENSE.md) | 제품 방향과 판단 기준 |
 | [docs/QUALITY_SCORE.md](docs/QUALITY_SCORE.md) | 품질 게이트 임계값 |
 | [docs/RELIABILITY.md](docs/RELIABILITY.md) | 장애 대응 및 롤백 전략 |
 | [docs/SECURITY.md](docs/SECURITY.md) | 보안 규칙 |
-| [docs/design-docs/](docs/design-docs/) | 상세 설계 문서 |
-| [docs/exec-plans/](docs/exec-plans/) | 실행 계획 및 기술 부채 |
-| [docs/product-specs/](docs/product-specs/) | 기능 명세 |
-| [docs/references/](docs/references/) | LLM 최적화 압축 참조 |
+| [tests/README.md](tests/README.md) | 테스트 전략 및 명세 |
 
 ---
 
@@ -99,30 +133,18 @@ harness_toy/
 2. **Feature Flag**: `flags.json`은 반드시 `pipeline/deploy.py`를 통해서만 변경한다.
 3. **배포 순서**: `evaluated_pass` 상태인 모델만 deploy 가능하다 (trained → evaluated_pass → deployed).
 4. **의존성 방향**: `pipeline/` → `data/` 단방향만 허용. 역방향 import 금지.
+5. **서비스 통신**: Operations → Automated Pipeline 재실행은 반드시 HTTP POST로만 요청한다 (직접 함수 호출 금지).
 
 ---
 
-## 빠른 시작
+## 에이전트 작업 시 주의사항
 
-```bash
-source .venv/bin/activate
+> 에이전트가 반복 실패하는 패턴이 발견될 때마다 여기에 추가합니다. (Mitchell Hashimoto 패턴)
 
-# 전체 파이프라인 실행
-python harness_pipeline.py
-
-# 드리프트 롤백 시나리오 시연
-python harness_pipeline.py --drift
-
-# 다른 데이터셋으로 실행
-python harness_pipeline.py --dataset-id 44120
-
-# 개별 스테이지 실행
-python pipeline/train.py [dataset_id]
-python pipeline/evaluate.py
-python pipeline/deploy.py
-python pipeline/monitor.py [--drift]
-python pipeline/predict.py
-```
+### [규칙 1] `from data.loader import ...` — ModuleNotFoundError
+- **원인**: Python이 프로젝트 루트를 모듈 경로로 인식하지 못함
+- **해결**: `.venv/lib/python3.*/site-packages/harness_mlops.pth`에 프로젝트 루트 경로 등록됨
+- **신규 환경 셋업 시**: `echo "$(pwd)" > .venv/lib/python3.*/site-packages/harness_mlops.pth`
 
 ---
 
