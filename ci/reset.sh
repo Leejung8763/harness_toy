@@ -53,7 +53,7 @@ echo "  [4/5] 런타임 상태 초기화..."
 echo '{"models": []}' > "$ROOT/registry/model_registry.json"
 echo "       registry/model_registry.json → 초기화"
 
-echo '{"next_version": 1, "runs": []}' > "$ROOT/ml_metadata/runs.json"
+echo '[]' > "$ROOT/ml_metadata/runs.json"
 echo "       ml_metadata/runs.json → 초기화"
 
 echo '{"active_model_version": null, "active_dataset_id": null}' > "$ROOT/feature_flags/flags.json"

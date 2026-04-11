@@ -1,0 +1,11 @@
+{
+  "evaluate": {
+    "roc_auc_baseline": 0.70
+  },
+  "monitor": {
+    "roc_auc_min": 0.75,
+    "error_rate_max": 0.25,
+    "psi_threshold": 0.20,
+    "ks_pvalue_min": 0.05
+  }
+}

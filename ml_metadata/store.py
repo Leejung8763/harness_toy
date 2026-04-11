@@ -30,12 +30,17 @@ def log_training(meta: dict) -> None:
     _append_run("training", meta)
 
 
+def log_monitoring(meta: dict) -> None:
+    """모니터링 라운드 결과를 기록합니다."""
+    _append_run("monitoring", meta)
+
+
 def get_runs(stage: str | None = None) -> list[dict]:
     """
     실행 기록을 반환합니다.
 
     Args:
-        stage: 'data_engineering' | 'training' | None (전체)
+        stage: 'data_engineering' | 'training' | 'monitoring' | None (전체)
     """
     runs = _load()
     if stage:

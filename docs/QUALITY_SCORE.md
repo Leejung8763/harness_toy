@@ -7,12 +7,25 @@
 
 ## 품질 게이트
 
-| 메트릭 | 임계값 | 위치 | 미통과 시 |
+> 임계값 원본: `config/thresholds.json` — 코드는 이 파일에서 읽습니다.
+> 이 문서는 사람이 읽기 위한 설명용입니다.
+
+| 메트릭 | 임계값 | 단계 | 미통과 시 |
 |--------|--------|------|-----------|
-| ROC-AUC (첫 배포) | ≥ 0.70 | `pipeline/evaluate.py:BASELINE_THRESHOLD` | 파이프라인 중단 |
-| ROC-AUC (재배포) | ≥ 현재 champion | `pipeline/evaluate.py:_check_gate` | 파이프라인 중단 |
-| ROC-AUC (운영 중) | ≥ 0.75 | `pipeline/monitor.py:CV_THRESHOLDS` | 자동 롤백 |
-| Error Rate (운영 중) | ≤ 0.25 | `pipeline/monitor.py:CV_THRESHOLDS` | 자동 롤백 |
+| ROC-AUC (첫 배포) | ≥ 0.70 | `pipeline/evaluate.py` | 파이프라인 중단 |
+| ROC-AUC (재배포) | ≥ 현재 champion | `pipeline/evaluate.py` | 파이프라인 중단 |
+| ROC-AUC (운영 중) | ≥ 0.75 | `pipeline/monitor.py` | 자동 롤백 |
+| Error Rate (운영 중) | ≤ 0.25 | `pipeline/monitor.py` | 자동 롤백 |
+| PSI mean (분포 변화) | ≤ 0.20 | `pipeline/monitor.py` | 자동 롤백 |
+| KS-test p-value | ≥ 0.05 | `pipeline/monitor.py` | 자동 롤백 |
+
+### PSI 해석 기준
+
+| PSI 범위 | 의미 |
+|----------|------|
+| < 0.10 | 분포 변화 없음 |
+| 0.10 ~ 0.20 | 중간 변화 (모니터링 강화 권장) |
+| > 0.20 | 유의미한 분포 변화 → 드리프트로 판정 |
 
 ---
 

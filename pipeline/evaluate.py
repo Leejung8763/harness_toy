@@ -21,7 +21,17 @@ from sklearn.preprocessing import label_binarize
 from data.loader import load_dataset
 
 REGISTRY_PATH = Path("registry/model_registry.json")
-BASELINE_THRESHOLD = 0.70  # 첫 배포 시 최소 기준
+_CONFIG_PATH = Path("config/thresholds.json")
+
+
+def _load_thresholds() -> dict:
+    if _CONFIG_PATH.exists():
+        with open(_CONFIG_PATH) as f:
+            return json.load(f).get("evaluate", {})
+    return {}
+
+
+BASELINE_THRESHOLD = _load_thresholds().get("roc_auc_baseline", 0.70)
 
 
 def evaluate(version: str | None = None) -> bool:

@@ -2,37 +2,53 @@
 pipeline/monitor.py — 배포 후 성능 모니터링 + 자동 롤백 + Trigger
 
 규칙:
-  - deployed 모델의 성능을 주기적으로 확인 (시뮬레이션)
-  - CV_THRESHOLDS 위반 시 사람 개입 없이 자동 롤백
+  - deployed 모델의 성능을 주기적으로 확인
+  - config/thresholds.json의 임계값 위반 시 자동 롤백
+  - 드리프트 감지: PSI(분포 변화) + KS-test(통계 검정) + 성능 지표
   - 롤백: 현재 모델 → 'rolled_back', flags.json → 이전 버전으로 복원
   - 이전 버전이 없으면 → flags.json 비활성화
   - 롤백 후 Automated Pipeline 서버에 재학습 요청 (Trigger)
+  - 각 라운드 메트릭은 ml_metadata에 기록
 """
 
 from __future__ import annotations
 
 import json
-import random
 import time
 from pathlib import Path
 
 import numpy as np
+from scipy import stats
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import label_binarize
 
 from data.loader import load_dataset
+from ml_metadata import store as metadata_store
 from pipeline.predict import _load_active_model, _load_flags, _load_registry
 
 REGISTRY_PATH = Path("registry/model_registry.json")
 FLAGS_PATH = Path("feature_flags/flags.json")
 PIPELINE_SERVER_URL = "http://localhost:8001"
-
-CV_THRESHOLDS = {
-    "roc_auc": 0.75,      # 배포 시 기준보다 낮게 설정 (운영 중 허용 하한)
-    "error_rate": 0.25,   # 예측 오류율 상한 (credit 데이터셋 기준 ~0.20)
-}
+_CONFIG_PATH = Path("config/thresholds.json")
 
 MONITOR_ROUNDS = 5
+
+
+def _load_thresholds() -> dict:
+    if _CONFIG_PATH.exists():
+        with open(_CONFIG_PATH) as f:
+            return json.load(f).get("monitor", {})
+    return {}
+
+
+def _get_cv_thresholds() -> dict:
+    t = _load_thresholds()
+    return {
+        "roc_auc": t.get("roc_auc_min", 0.75),
+        "error_rate": t.get("error_rate_max", 0.25),
+        "psi": t.get("psi_threshold", 0.20),
+        "ks_pvalue": t.get("ks_pvalue_min", 0.05),
+    }
 
 
 def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
@@ -53,31 +69,48 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
         print("[monitor] ❌ 배포된 모델이 없습니다.")
         return False
 
+    thresholds = _get_cv_thresholds()
     print(f"\n[monitor] 모니터링 시작 — {version}  ({rounds} 라운드)")
+    print(f"  임계값: ROC-AUC≥{thresholds['roc_auc']}  ErrorRate≤{thresholds['error_rate']}  PSI≤{thresholds['psi']}")
     if inject_drift:
         print("  ⚠️  드리프트 주입 모드 ON")
 
     model, entry = _load_active_model()
     split = load_dataset(entry["dataset_id"])
 
-    print(f"\n  {'Round':<8} {'ROC-AUC':>8}  {'ErrorRate':>10}  {'상태':>6}")
-    print("  " + "-" * 42)
+    # 베이스라인 분포: 학습 데이터 전체
+    baseline_X = split.X_train
+
+    print(f"\n  {'Round':<8} {'ROC-AUC':>8}  {'ErrRate':>8}  {'PSI':>7}  {'KS-p':>7}  {'상태':>4}")
+    print("  " + "-" * 58)
 
     for round_num in range(1, rounds + 1):
-        metrics = _evaluate_round(model, split, round_num, inject_drift)
+        metrics = _evaluate_round(model, split, baseline_X, round_num, inject_drift)
 
-        status = "✅"
-        violation = _check_thresholds(metrics)
+        violation = _check_thresholds(metrics, thresholds)
+        status = "❌" if violation else "✅"
+
+        print(
+            f"  {round_num:<8} {metrics['roc_auc']:>8.4f}  {metrics['error_rate']:>8.4f}"
+            f"  {metrics['psi_mean']:>7.4f}  {metrics['ks_pvalue_min']:>7.4f}  {status}"
+        )
+
+        # 라운드 메트릭 기록
+        metadata_store.log_monitoring({
+            "model_version": version,
+            "round": round_num,
+            **metrics,
+            "violation": violation,
+            "inject_drift": inject_drift,
+        })
+
         if violation:
-            status = "❌"
-            print(f"  {round_num:<8} {metrics['roc_auc']:>8.4f}  {metrics['error_rate']:>10.4f}  {status}")
             print(f"\n  🚨 임계값 위반: {violation}")
             _rollback(version)
             _trigger_retraining(entry["dataset_id"])
             return False
 
-        print(f"  {round_num:<8} {metrics['roc_auc']:>8.4f}  {metrics['error_rate']:>10.4f}  {status}")
-        time.sleep(0.3)  # 라운드 간 간격 시뮬레이션
+        time.sleep(0.3)
 
     print(f"\n  ✅ {rounds} 라운드 정상 완료 — {version} 유지")
     return True
@@ -86,22 +119,24 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
 def _evaluate_round(
     model: object,
     split,
+    baseline_X,
     round_num: int,
     inject_drift: bool,
 ) -> dict:
-    """한 라운드의 성능을 평가합니다 (실제 데이터 샘플링으로 시뮬레이션)."""
+    """한 라운드의 성능 + 분포 변화를 평가합니다."""
     rng = np.random.default_rng(seed=round_num * 42)
 
     n = len(split.X_test)
     idx = rng.choice(n, size=min(500, n), replace=False)
-    X_sample = split.X_test.iloc[idx]
+    X_sample = split.X_test.iloc[idx].copy()
     y_sample = split.y_test.iloc[idx]
 
     if inject_drift:
-        # 드리프트 시뮬레이션: 노이즈를 점점 강하게 추가
+        # 드리프트 시뮬레이션: 라운드마다 노이즈 강도 증가
         noise_scale = round_num * 2.0
         X_sample = X_sample + rng.normal(0, noise_scale, X_sample.shape).astype("float32")
 
+    # ── 성능 지표 ─────────────────────────────────────────────────
     if split.n_classes == 2:
         proba = model.predict_proba(X_sample)[:, 1]
         roc_auc = float(roc_auc_score(y_sample, proba))
@@ -113,17 +148,54 @@ def _evaluate_round(
     preds = model.predict(X_sample)
     error_rate = float((preds != y_sample.values).mean())
 
-    return {"roc_auc": round(roc_auc, 4), "error_rate": round(error_rate, 4)}
+    # ── 분포 변화 감지 ────────────────────────────────────────────
+    psi_values, ks_pvalues = [], []
+    baseline_sample = baseline_X.sample(min(500, len(baseline_X)), random_state=round_num)
+
+    for col in X_sample.columns:
+        psi_values.append(_compute_psi(baseline_sample[col].values, X_sample[col].values))
+        _, p = stats.ks_2samp(baseline_sample[col].values, X_sample[col].values)
+        ks_pvalues.append(float(p))
+
+    return {
+        "roc_auc": round(roc_auc, 4),
+        "error_rate": round(error_rate, 4),
+        "psi_mean": round(float(np.mean(psi_values)), 4),
+        "psi_max": round(float(np.max(psi_values)), 4),
+        "ks_pvalue_min": round(float(np.min(ks_pvalues)), 4),
+    }
 
 
-def _check_thresholds(metrics: dict) -> str | None:
+def _compute_psi(baseline: np.ndarray, current: np.ndarray, bins: int = 10) -> float:
+    """PSI(Population Stability Index)를 계산합니다.
+
+    PSI < 0.1  : 변화 없음
+    PSI 0.1~0.2: 중간 변화 (모니터링 강화)
+    PSI > 0.2  : 유의미한 분포 변화 (드리프트)
+    """
+    eps = 1e-8
+    breakpoints = np.linspace(
+        min(baseline.min(), current.min()),
+        max(baseline.max(), current.max()),
+        bins + 1,
+    )
+    base_counts = np.histogram(baseline, bins=breakpoints)[0] + eps
+    curr_counts = np.histogram(current, bins=breakpoints)[0] + eps
+    base_pct = base_counts / base_counts.sum()
+    curr_pct = curr_counts / curr_counts.sum()
+    return float(np.sum((curr_pct - base_pct) * np.log(curr_pct / base_pct)))
+
+
+def _check_thresholds(metrics: dict, thresholds: dict) -> str | None:
     """임계값 위반 항목을 반환합니다. 정상이면 None."""
-    if metrics["roc_auc"] < CV_THRESHOLDS["roc_auc"]:
-        return (f"roc_auc={metrics['roc_auc']:.4f} < "
-                f"threshold={CV_THRESHOLDS['roc_auc']}")
-    if metrics["error_rate"] > CV_THRESHOLDS["error_rate"]:
-        return (f"error_rate={metrics['error_rate']:.4f} > "
-                f"threshold={CV_THRESHOLDS['error_rate']}")
+    if metrics["roc_auc"] < thresholds["roc_auc"]:
+        return f"roc_auc={metrics['roc_auc']:.4f} < threshold={thresholds['roc_auc']}"
+    if metrics["error_rate"] > thresholds["error_rate"]:
+        return f"error_rate={metrics['error_rate']:.4f} > threshold={thresholds['error_rate']}"
+    if metrics["psi_mean"] > thresholds["psi"]:
+        return f"psi_mean={metrics['psi_mean']:.4f} > threshold={thresholds['psi']} (분포 변화 감지)"
+    if metrics["ks_pvalue_min"] < thresholds["ks_pvalue"]:
+        return f"ks_pvalue_min={metrics['ks_pvalue_min']:.4f} < threshold={thresholds['ks_pvalue']} (KS-test 유의)"
     return None
 
 
