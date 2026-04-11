@@ -3,6 +3,8 @@ pipeline/deploy.py — 상태 전이 + Feature Flag 업데이트
 
 규칙:
   - 'evaluated_pass' 상태 모델만 배포 가능 (invariant)
+  - LLM 배포 판단 에이전트가 "deploy" 결정 시에만 실제 배포 진행
+  - LLM이 "hold"/"reject" 판단해도 Quality Gate는 여전히 유효 (하네스)
   - 배포 시: 신규 → 'deployed', 기존 deployed → 'retired'
   - Feature Flag는 반드시 이 모듈을 통해서만 변경 (직접 수정 금지)
 """
@@ -16,12 +18,13 @@ REGISTRY_PATH = Path("registry/model_registry.json")
 FLAGS_PATH = Path("feature_flags/flags.json")
 
 
-def deploy(version: str | None = None) -> bool:
+def deploy(version: str | None = None, use_agent: bool = True) -> bool:
     """
     'evaluated_pass' 모델을 배포합니다.
 
     Args:
         version: 배포할 버전 (None이면 최신 evaluated_pass 모델)
+        use_agent: True면 LLM 에이전트 판단을 거침 (기본값)
 
     Returns:
         bool: True(성공) / False(실패)
@@ -35,6 +38,19 @@ def deploy(version: str | None = None) -> bool:
 
     print(f"\n[deploy] 배포 대상: {candidate['model_name']}  {candidate['version']}  "
           f"(dataset={candidate['dataset_name']})")
+
+    # ── LLM 에이전트 판단 ────────────────────────────────────────
+    if use_agent:
+        try:
+            from agents.deploy_agent import judge_deployment
+            judgment = judge_deployment(candidate["version"])
+            if judgment["decision"] != "deploy":
+                print(f"  ⏸️  에이전트 판단: {judgment['decision'].upper()} — 배포 보류")
+                return False
+        except Exception as e:
+            print(f"  ⚠️  에이전트 판단 실패 ({e}) — 자동 배포로 fallback")
+
+    # ── 배포 진행 ────────────────────────────────────────────────
 
     # 기존 deployed → retired
     retired = _retire_current(registry, candidate["version"])
