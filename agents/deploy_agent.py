@@ -58,6 +58,24 @@ def judge_deployment(candidate_version: str) -> dict:
     result = _parse_response(response)
 
     _print_judgment(candidate_version, result)
+
+    # 결정 로깅 (회고 분석용)
+    try:
+        from agents.eval.decision_logger import log_deploy_decision
+        log_deploy_decision(
+            model_version=candidate_version,
+            decision=result["decision"],
+            confidence=result["confidence"],
+            reason=result["reason"],
+            context={
+                "candidate_roc_auc": context["candidate"].get("metrics", {}).get("roc_auc"),
+                "champion_roc_auc": context["champion"].get("metrics", {}).get("roc_auc") if context["champion"] else None,
+                "champion_version": context["champion"]["version"] if context["champion"] else None,
+            },
+        )
+    except Exception:
+        pass
+
     return result
 
 

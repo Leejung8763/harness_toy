@@ -120,11 +120,23 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
                 print(f"  ⚠️  drift_agent 분석 실패: {e}")
             _rollback(version)
             _trigger_retraining(entry["dataset_id"])
+            # 배포 결정 회고 업데이트 — 드리프트 감지
+            try:
+                from agents.eval.decision_logger import update_deploy_outcome
+                update_deploy_outcome(version, "drift_detected", monitor_result=metrics)
+            except Exception:
+                pass
             return False
 
         time.sleep(0.3)
 
     print(f"\n  ✅ {rounds} 라운드 정상 완료 — {version} 유지")
+    # 배포 결정 회고 업데이트 — 정상 운영
+    try:
+        from agents.eval.decision_logger import update_deploy_outcome
+        update_deploy_outcome(version, "survived")
+    except Exception:
+        pass
     return True
 
 

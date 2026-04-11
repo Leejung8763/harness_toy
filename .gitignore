@@ -28,3 +28,4 @@ build/
 .coverage
 htmlcov/
 .pytest_cache/
+agents/eval/results/

@@ -171,3 +171,16 @@ def _log_to_metadata(version: str, metrics: dict, analysis: dict) -> None:
         })
     except Exception:
         pass
+
+    # eval 로거에도 기록 (회고 분석용)
+    try:
+        from agents.eval.decision_logger import log_drift_analysis
+        log_drift_analysis(
+            model_version=version,
+            affected_features=analysis.get("affected_features", []),
+            cause=analysis.get("cause", ""),
+            recommendation=analysis.get("recommendation", ""),
+            metrics=metrics,
+        )
+    except Exception:
+        pass
