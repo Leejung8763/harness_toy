@@ -62,8 +62,15 @@ def analyze_drift(
         }
     """
     prompt = _build_prompt(model_version, feature_names, psi_per_feature, ks_pvalue_per_feature, metrics)
-    response = _call_llm(prompt)
-    result = _parse_response(response)
+    try:
+        response = _call_llm(prompt)
+        result = _parse_response(response)
+    except Exception as e:
+        result = {
+            "affected_features": [],
+            "cause": f"LLM 분석 실패: {e}",
+            "recommendation": "",
+        }
     _print_analysis(result)
     _log_to_metadata(model_version, metrics, result)
     return result
