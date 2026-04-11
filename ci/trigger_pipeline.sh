@@ -11,6 +11,7 @@
 #   ./ci/trigger_pipeline.sh --drift            # 드리프트 시나리오 (직접 실행만)
 
 set -euo pipefail
+export PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

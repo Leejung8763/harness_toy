@@ -142,21 +142,27 @@ harness_toy/
 > 에이전트가 반복 실패하는 패턴이 발견될 때마다 여기에 추가합니다. (Mitchell Hashimoto 패턴)
 
 ### [규칙 1] `from data.loader import ...` — ModuleNotFoundError
-- **원인**: Python이 프로젝트 루트를 모듈 경로로 인식하지 못함
-- **해결**: `.venv/lib/python3.*/site-packages/harness_mlops.pth`에 프로젝트 루트 경로 등록됨
-- **신규 환경 셋업 시**: `echo "$(pwd)" > .venv/lib/python3.*/site-packages/harness_mlops.pth`
-
----
-
-## 에이전트 작업 시 주의사항
-
-> 에이전트가 반복 실패하는 패턴이 발견될 때마다 여기에 추가합니다. (Mitchell Hashimoto 패턴)
-
-### [규칙 1] `from data.loader import ...` — ModuleNotFoundError
-- **원인**: Python이 프로젝트 루트를 모듈 경로로 인식하지 못함
-- **해결**: `.venv/lib/python3.*/site-packages/harness_mlops.pth`에 프로젝트 루트 경로 등록됨
-- **신규 환경 셋업 시**: 프로젝트 루트 경로를 `.pth` 파일에 수동 등록
+- **원인**: system `python3`는 `.venv`의 `.pth` 파일을 읽지 않아 프로젝트 루트가 경로에 없음
+- **해결**: 직접 실행 시 `PYTHONPATH=$(pwd) python3 pipeline/monitor.py` 처럼 명시
+- **ci/ 스크립트**: `export PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)"` 포함됨
+- **Makefile**: `export PYTHONPATH := $(shell pwd)` 포함됨
+- **`.pth` 파일 경로 주의**: `.venv/lib/python3.*/site-packages/harness_mlops.pth`가 현재 프로젝트를 가리키는지 확인 (`/Users/leejung/harness_toy` 이어야 함)
 
 ### [규칙 2] `.venv` 인터프리터 오류
 - **원인**: `.venv`가 다른 경로의 Python을 참조 중 (bad interpreter)
 - **해결**: `python3` / `pip3` 직접 사용. Makefile과 ci/run.sh는 system python3 사용
+
+### [규칙 3] `/predict` 422 Unprocessable Entity
+- **원인**: `features`는 `list[dict[str, float]]` 형식 필요. `list[float]` 불가
+- **올바른 형식**: `{"features": [{"컬럼명": 값, ...}]}`
+- **컬럼명 확인**: `registry/model_registry.json`의 deployed 모델 pkl에서 `model.feature_names_in_` 참조
+
+### [규칙 4] `/predict` 500 Internal Server Error
+- **원인**: 피처 컬럼명이 모델 학습 시 컬럼명과 불일치 (더미 이름 `f0, f1...` 사용 시 발생)
+- **해결**: `ci/test_api.py`의 `_make_sample_features()`가 실제 `feature_names_in_` 사용하도록 수정됨
+- **확인**: `python3 ci/test_api.py` 실행 시 모든 테스트 통과 확인
+
+### [규칙 5] 포트 충돌 — `[Errno 48] address already in use`
+- **원인**: 이전 서버 프로세스가 종료되지 않은 상태에서 재시작 시도
+- **해결**: `lsof -ti:8000 | xargs kill -9` / `lsof -ti:8001 | xargs kill -9`
+

@@ -67,7 +67,7 @@
     },
     {
       "version": "v6",
-      "status": "deployed",
+      "status": "retired",
       "dataset_id": 44089,
       "dataset_name": "credit",
       "model_name": "hist_gradient_boosting",
@@ -77,6 +77,84 @@
       "fit_time_sec": 0.41,
       "model_path": "models/champion_credit_v6.pkl",
       "trained_at": "2026-04-11T00:14:17.066122"
+    },
+    {
+      "version": "v7",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.38,
+      "model_path": "models/champion_credit_v7.pkl",
+      "trained_at": "2026-04-11T00:55:29.460583"
+    },
+    {
+      "version": "v8",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.44,
+      "model_path": "models/champion_credit_v8.pkl",
+      "trained_at": "2026-04-11T01:12:44.088461"
+    },
+    {
+      "version": "v9",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.41,
+      "model_path": "models/champion_credit_v9.pkl",
+      "trained_at": "2026-04-11T16:45:12.136621"
+    },
+    {
+      "version": "v10",
+      "status": "retired",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.46,
+      "model_path": "models/champion_credit_v10.pkl",
+      "trained_at": "2026-04-11T17:41:09.196299"
+    },
+    {
+      "version": "v11",
+      "status": "rolled_back",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.4,
+      "model_path": "models/champion_credit_v11.pkl",
+      "trained_at": "2026-04-11T17:47:04.837508"
+    },
+    {
+      "version": "v12",
+      "status": "deployed",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.39,
+      "model_path": "models/champion_credit_v12.pkl",
+      "trained_at": "2026-04-11T18:16:23.601138"
     }
   ]
 }

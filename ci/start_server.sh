@@ -8,6 +8,7 @@
 #   ./ci/start_server.sh --reload  # 코드 변경 시 자동 재시작 (개발 모드)
 
 set -euo pipefail
+export PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

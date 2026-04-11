@@ -1,0 +1,63 @@
+[
+  {
+    "stage": "data_engineering",
+    "logged_at": "2026-04-11T16:45:09.901733",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "n_features_raw": 10,
+    "n_features_engineered": 10,
+    "n_train": 13371,
+    "n_test": 3343,
+    "skipped": false,
+    "created_at": "2026-04-11T16:45:09.901707"
+  },
+  {
+    "stage": "training",
+    "logged_at": "2026-04-11T16:45:12.139814",
+    "model_version": "v9",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "champion_model": "hist_gradient_boosting",
+    "roc_auc": 0.8622,
+    "fit_time_sec": 0.41,
+    "n_challengers": 5
+  },
+  {
+    "stage": "training",
+    "logged_at": "2026-04-11T17:41:09.196804",
+    "model_version": "v10",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "champion_model": "hist_gradient_boosting",
+    "roc_auc": 0.8622,
+    "fit_time_sec": 0.46,
+    "n_challengers": 5
+  },
+  {
+    "stage": "training",
+    "logged_at": "2026-04-11T17:47:04.839628",
+    "model_version": "v11",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "champion_model": "hist_gradient_boosting",
+    "roc_auc": 0.8622,
+    "fit_time_sec": 0.4,
+    "n_challengers": 5
+  },
+  {
+    "stage": "training",
+    "logged_at": "2026-04-11T18:16:23.602436",
+    "model_version": "v12",
+    "dataset_id": 44089,
+    "dataset_name": "credit",
+    "feature_version": "v1",
+    "champion_model": "hist_gradient_boosting",
+    "roc_auc": 0.8622,
+    "fit_time_sec": 0.39,
+    "n_challengers": 5
+  }
+]

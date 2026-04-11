@@ -1,5 +1,6 @@
 PYTHON := python3
 PIP    := pip3
+export PYTHONPATH := $(shell pwd)
 
 .PHONY: build test package pipeline clean
 

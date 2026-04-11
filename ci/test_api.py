@@ -88,21 +88,24 @@ def run_tests(base_url: str) -> bool:
 
 
 def _make_sample_features() -> list[dict]:
-    """실제 모델이 학습한 피처 수에 맞는 샘플을 생성합니다."""
+    """실제 모델이 학습한 피처명으로 샘플을 생성합니다."""
     import json
+    import pickle
     from pathlib import Path
+
     registry_path = Path("registry/model_registry.json")
     if registry_path.exists():
         with open(registry_path) as f:
             reg = json.load(f)
         deployed = [m for m in reg.get("models", []) if m["status"] == "deployed"]
         if deployed:
-            import pickle
             with open(deployed[-1]["model_path"], "rb") as f:
                 saved = pickle.load(f)
             model = saved["model"]
-            n_features = model.n_features_in_
-            return [{f"f{i}": float(i) for i in range(n_features)}]
+            if hasattr(model, "feature_names_in_"):
+                return [{name: 1.0 for name in model.feature_names_in_}]
+            # feature_names_in_ 없으면 순서 기반
+            return [{f"f{i}": 1.0 for i in range(model.n_features_in_)}]
     return [{"f0": 1.0, "f1": 2.0}]
 
 
