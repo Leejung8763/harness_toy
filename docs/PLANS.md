@@ -61,9 +61,34 @@
 
 ## 단기 로드맵
 
-- [ ] **Performance Monitoring 고도화** — 운영 메트릭 대시보드 / 알림
-- [ ] **A/B Testing** — Feature Flag 기반 모델 트래픽 분산
+- [x] **Monitoring 고도화 (B단계)**
+  - `config/thresholds.json` — 임계값 단일 진실 소스
+  - PSI(Population Stability Index) + KS-test 드리프트 감지
+  - `ml_metadata/store.py` — `log_monitoring()` 추가
+  - 테스트 47개 → 단계적 증가
+
+- [x] **LLM 에이전트 도입 (A단계)**
+  - `agents/deploy_agent.py` — 배포 판단 에이전트 (GitHub Models API, gpt-4o-mini)
+  - `agents/drift_agent.py` — 드리프트 원인 분석 에이전트 (피처별 PSI/KS 분석)
+  - `agents/orchestrator_agent.py` — 파이프라인 스테이지 최적화 (data_eng 스킵 판단)
+  - `agents/AGENTS_SPEC.md` — 에이전트 명세 (참고문서/스킬/권한범위/fallback)
+  - `pipeline/deploy.py` — `use_agent=True` 옵션
+  - `pipeline/monitor.py` — drift_agent 연동 (피처별 PSI/KS 반환)
+  - `api/pipeline_server.py` — `trigger_reason` + orchestrator 연동
+  - `ci/trigger_pipeline.sh` — `--trigger` 옵션 추가
+  - 테스트 73개 전체 통과
+
+- [x] **E2E 검증**
+  - ci_cd 파이프라인: reset → unit tests → 서버 기동 → 파이프라인 완료 → 통합 테스트 5/5
+  - orchestrator: drift 트리거 시 Feature Store 신선(9h) → data_eng 스킵 확인
+  - deploy_agent: 동일 성능 모델 → HOLD 정상 판단
+  - drift_agent: PSI 드리프트 감지 후 피처 분석 + 재학습 제안 확인
+
+## 단기 로드맵
+
+- [ ] **A/B Testing** — Feature Flag 기반 챔피언/챌린저 트래픽 분산
 - [ ] **Data Versioning** — Feature Store 버전 관리 + 롤백
+- [ ] **Performance Dashboard** — 운영 메트릭 시각화 (CLI or HTML)
 
 ---
 
