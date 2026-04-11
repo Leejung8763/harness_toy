@@ -19,15 +19,17 @@ cd "$ROOT"
 PIPELINE_URL="http://localhost:8001"
 DATASET_ID=44089
 
-# --dataset-id 파싱
+# --dataset-id / --drift / --trigger 파싱
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dataset-id) DATASET_ID="$2"; shift 2 ;;
         --drift)      INJECT_DRIFT=true; shift ;;
+        --trigger)    TRIGGER_REASON="$2"; shift 2 ;;
         *) shift ;;
     esac
 done
 INJECT_DRIFT=${INJECT_DRIFT:-false}
+TRIGGER_REASON=${TRIGGER_REASON:-ci_cd}
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -38,12 +40,12 @@ echo ""
 # Pipeline Server가 실행 중이면 HTTP POST, 아니면 직접 실행
 if curl -sf "$PIPELINE_URL/pipeline/status" > /dev/null 2>&1; then
     echo "  → Pipeline Server 감지 ($PIPELINE_URL)"
-    echo "  → POST /pipeline/run  dataset_id=$DATASET_ID"
+    echo "  → POST /pipeline/run  dataset_id=$DATASET_ID  trigger_reason=$TRIGGER_REASON"
     echo ""
 
     RESPONSE=$(curl -s -X POST "$PIPELINE_URL/pipeline/run" \
         -H "Content-Type: application/json" \
-        -d "{\"dataset_id\": $DATASET_ID, \"inject_drift\": $INJECT_DRIFT}")
+        -d "{\"dataset_id\": $DATASET_ID, \"inject_drift\": $INJECT_DRIFT, \"trigger_reason\": \"$TRIGGER_REASON\"}")
     echo "  응답: $RESPONSE"
 
     RUN_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run_id','?'))")

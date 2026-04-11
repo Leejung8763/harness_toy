@@ -2,19 +2,6 @@
   "models": [
     {
       "version": "v1",
-      "status": "retired",
-      "dataset_id": 44089,
-      "dataset_name": "credit",
-      "model_name": "hist_gradient_boosting",
-      "metrics": {
-        "roc_auc": 0.8854
-      },
-      "fit_time_sec": 0.53,
-      "model_path": "models/champion_credit_v1.pkl",
-      "trained_at": "2026-04-12T01:14:47.061774"
-    },
-    {
-      "version": "v2",
       "status": "deployed",
       "dataset_id": 44089,
       "dataset_name": "credit",
@@ -22,9 +9,22 @@
       "metrics": {
         "roc_auc": 0.8854
       },
-      "fit_time_sec": 0.51,
+      "fit_time_sec": 0.57,
+      "model_path": "models/champion_credit_v1.pkl",
+      "trained_at": "2026-04-12T02:46:00.570063"
+    },
+    {
+      "version": "v2",
+      "status": "evaluated_pass",
+      "dataset_id": 44089,
+      "dataset_name": "credit",
+      "model_name": "hist_gradient_boosting",
+      "metrics": {
+        "roc_auc": 0.8854
+      },
+      "fit_time_sec": 0.44,
       "model_path": "models/champion_credit_v2.pkl",
-      "trained_at": "2026-04-12T01:16:34.539973"
+      "trained_at": "2026-04-12T02:46:46.518805"
     },
     {
       "version": "v3",
@@ -35,9 +35,9 @@
       "metrics": {
         "roc_auc": 0.8854
       },
-      "fit_time_sec": 0.5,
+      "fit_time_sec": 0.56,
       "model_path": "models/champion_credit_v3.pkl",
-      "trained_at": "2026-04-12T01:44:44.253551"
+      "trained_at": "2026-04-12T02:48:08.747372"
     }
   ]
 }
