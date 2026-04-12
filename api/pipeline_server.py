@@ -106,15 +106,15 @@ def _execute_pipeline(dataset_id: int, inject_drift: bool, trigger_reason: str, 
     """백그라운드 스레드에서 파이프라인을 실행합니다."""
     skip_stages: list[str] = []
     try:
-        from agents.orchestrator_agent import plan_pipeline
-        plan = plan_pipeline(
+        from agents.meta_orchestrator_agent import orchestrate
+        result = orchestrate(
             trigger_reason=trigger_reason,
             dataset_id=dataset_id,
             use_agent=use_agent,
         )
-        skip_stages = plan.skip_stages
+        skip_stages = result.run_plan.skip_stages
     except Exception as e:
-        print(f"  ⚠️  orchestrator_agent 호출 실패: {e} → 전체 실행")
+        print(f"  ⚠️  meta_orchestrator_agent 호출 실패: {e} → 전체 실행")
 
     try:
         harness_pipeline.run(
