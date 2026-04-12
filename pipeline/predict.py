@@ -22,28 +22,19 @@ REGISTRY_PATH = Path("registry/model_registry.json")
 
 def predict(X: pd.DataFrame) -> np.ndarray:
     """
-    현재 deployed 모델로 클래스를 예측합니다.
-
-    Args:
-        X: 입력 피처 DataFrame (float32, NaN 없음)
-
-    Returns:
-        np.ndarray: 예측 클래스 (int32, 0-based)
+    Feature Flag 기반으로 챔피언 또는 챌린저 모델로 예측합니다.
+    challenger_traffic_weight 확률로 챌린저 모델을 사용합니다.
     """
-    model, meta = _load_active_model()
+    model, _ = _load_active_model()
     X = _validate_input(X)
-    preds = model.predict(X)
-    return preds.astype(np.int32)
+    return model.predict(X).astype(np.int32)
 
 
 def predict_proba(X: pd.DataFrame) -> np.ndarray:
     """
-    현재 deployed 모델로 클래스별 확률을 반환합니다.
-
-    Returns:
-        np.ndarray: shape=(n_samples, n_classes), 각 클래스의 확률
+    Feature Flag 기반으로 챔피언 또는 챌린저 모델로 확률을 반환합니다.
     """
-    model, meta = _load_active_model()
+    model, _ = _load_active_model()
     X = _validate_input(X)
     return model.predict_proba(X)
 
@@ -69,7 +60,8 @@ def get_active_model_info() -> dict:
 
 
 def _load_active_model() -> tuple[object, dict]:
-    """flags.json → registry → pkl 순서로 현재 모델을 로드합니다."""
+    """flags.json → A/B 트래픽 분기 → registry → pkl 순서로 모델을 로드합니다."""
+    import random
     flags = _load_flags()
     version = flags.get("active_model_version")
 
@@ -77,6 +69,12 @@ def _load_active_model() -> tuple[object, dict]:
         raise RuntimeError(
             "배포된 모델이 없습니다. pipeline/deploy.py 를 먼저 실행하세요."
         )
+
+    # A/B 트래픽 분기: challenger가 있으면 확률적으로 선택
+    challenger = flags.get("challenger_model_version")
+    weight = float(flags.get("challenger_traffic_weight", 0.0))
+    if challenger and weight > 0 and random.random() < weight:
+        version = challenger
 
     registry = _load_registry()
     entry = next((m for m in registry.get("models", []) if m["version"] == version), None)

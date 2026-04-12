@@ -3,9 +3,9 @@ pipeline/deploy.py — 상태 전이 + Feature Flag 업데이트
 
 규칙:
   - 'evaluated_pass' 상태 모델만 배포 가능 (invariant)
-  - LLM 배포 판단 에이전트가 "deploy" 결정 시에만 실제 배포 진행
-  - LLM이 "hold"/"reject" 판단해도 Quality Gate는 여전히 유효 (하네스)
+  - LLM 에이전트 판단: "deploy" → 즉시 배포, "start_ab_test" → challenger 등록, "reject" → 폐기
   - 배포 시: 신규 → 'deployed', 기존 deployed → 'retired'
+  - A/B 테스트 시: 신규 → 'challenger', flags에 challenger 정보 추가
   - Feature Flag는 반드시 이 모듈을 통해서만 변경 (직접 수정 금지)
 """
 
@@ -17,17 +17,19 @@ from pathlib import Path
 REGISTRY_PATH = Path("registry/model_registry.json")
 FLAGS_PATH = Path("feature_flags/flags.json")
 
+CHALLENGER_TRAFFIC_WEIGHT = 0.1  # 챌린저 기본 트래픽 비율
+
 
 def deploy(version: str | None = None, use_agent: bool = True) -> bool:
     """
-    'evaluated_pass' 모델을 배포합니다.
+    'evaluated_pass' 모델을 배포하거나 A/B 테스트 챌린저로 등록합니다.
 
     Args:
         version: 배포할 버전 (None이면 최신 evaluated_pass 모델)
         use_agent: True면 LLM 에이전트 판단을 거침 (기본값)
 
     Returns:
-        bool: True(성공) / False(실패)
+        bool: True(성공/challenger 등록) / False(실패/reject)
     """
     registry = _load_registry()
     candidate = _get_candidate(registry, version)
@@ -40,32 +42,54 @@ def deploy(version: str | None = None, use_agent: bool = True) -> bool:
           f"(dataset={candidate['dataset_name']})")
 
     # ── LLM 에이전트 판단 ────────────────────────────────────────
+    decision = "deploy"  # fallback
     if use_agent:
         try:
             from agents.deploy_agent import judge_deployment
             judgment = judge_deployment(candidate["version"])
-            if judgment["decision"] != "deploy":
-                print(f"  ⏸️  에이전트 판단: {judgment['decision'].upper()} — 배포 보류")
+            decision = judgment["decision"]
+            if decision == "reject":
+                print(f"  🚫  에이전트 판단: REJECT — 배포 거부")
                 return False
         except Exception as e:
             print(f"  ⚠️  에이전트 판단 실패 ({e}) — 자동 배포로 fallback")
 
-    # ── 배포 진행 ────────────────────────────────────────────────
+    # ── A/B 테스트 챌린저 등록 ───────────────────────────────────
+    if decision == "start_ab_test":
+        return _register_challenger(registry, candidate)
 
-    # 기존 deployed → retired
+    # ── 즉시 배포 ────────────────────────────────────────────────
+    return _full_deploy(registry, candidate)
+
+
+def _full_deploy(registry: dict, candidate: dict) -> bool:
+    """챔피언으로 즉시 배포합니다."""
     retired = _retire_current(registry, candidate["version"])
     if retired:
         print(f"  이전 champion {retired['version']} → retired")
 
-    # 신규 → deployed
     candidate["status"] = "deployed"
     _save_registry(registry)
     print(f"  {candidate['version']} → deployed ✅")
 
-    # Feature Flag 업데이트
     _update_flags(candidate)
     print(f"  flags.json → active_model_version={candidate['version']}")
+    return True
 
+
+def _register_challenger(registry: dict, candidate: dict) -> bool:
+    """챌린저로 등록합니다 (트래픽 일부만 받음)."""
+    candidate["status"] = "challenger"
+    _save_registry(registry)
+    print(f"  {candidate['version']} → challenger ✅  (트래픽 {CHALLENGER_TRAFFIC_WEIGHT:.0%})")
+
+    # flags에 challenger 정보 추가
+    flags = _load_flags()
+    flags["challenger_model_version"] = candidate["version"]
+    flags["challenger_traffic_weight"] = CHALLENGER_TRAFFIC_WEIGHT
+    _save_flags(flags)
+    print(f"  flags.json → challenger_model_version={candidate['version']}, "
+          f"traffic={CHALLENGER_TRAFFIC_WEIGHT:.0%}")
     return True
 
 

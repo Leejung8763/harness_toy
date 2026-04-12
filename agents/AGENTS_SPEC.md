@@ -23,7 +23,7 @@
 | **파일** | `agents/deploy_agent.py` |
 | **호출 위치** | `pipeline/deploy.py:deploy()` |
 | **입력** | 후보 모델 버전, registry 정보, 학습 메타데이터 |
-| **출력** | `decision`: deploy / hold / reject |
+| **출력** | `decision`: deploy / start_ab_test / reject |
 | **모델** | gpt-4o-mini (GitHub Models API) |
 
 #### 참고 문서
@@ -47,14 +47,20 @@
 - ❌ 다른 에이전트 직접 호출 금지 (오케스트레이터를 통해서만)
 
 #### 판단 기준 (프롬프트에 주입되는 규칙)
-1. ROC-AUC가 챔피언보다 높거나 같으면 일반적으로 `deploy`
-2. 성능 차이 < 0.001이면 변경 비용 대비 효익 낮음 → `hold`
+1. ROC-AUC가 챔피언보다 확실히 높으면(>0.001) → `deploy`
+2. 성능 차이 < 0.001이면 A/B 테스트로 검증 → `start_ab_test`
 3. ROC-AUC < BASELINE_THRESHOLD(0.70)이면 `reject`
 4. 첫 배포(챔피언 없음)는 baseline 충족 시 `deploy`
 
 #### fallback 동작
 - LLM API 호출 실패 → 자동 배포(rule-based)로 대체
-- 응답 파싱 실패 → `hold` 반환
+- 응답 파싱 실패 → `start_ab_test` 반환
+
+#### A/B Test 연동
+- `start_ab_test` 결정 시 `pipeline/deploy.py`가 `_register_challenger()` 실행
+- challenger 모델이 `feature_flags/flags.json`에 등록되어 10% 트래픽 수신
+- `pipeline/ab_test.py`가 Welch's t-test로 승격/거부 판단
+- 결과는 `pipeline/ab_test.promote_challenger()` 또는 `reject_challenger()`로 처리
 
 ---
 

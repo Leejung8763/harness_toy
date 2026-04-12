@@ -44,14 +44,14 @@ def judge_deployment(candidate_version: str) -> dict:
 
     Returns:
         {
-            "decision": "deploy" | "hold" | "reject",
+            "decision": "deploy" | "start_ab_test" | "reject",
             "reason": "판단 근거 (한국어)",
             "confidence": 0.0~1.0,
         }
     """
     context = _build_context(candidate_version)
     if context is None:
-        return {"decision": "hold", "reason": "모델 정보를 찾을 수 없습니다.", "confidence": 0.0}
+        return {"decision": "start_ab_test", "reason": "모델 정보를 찾을 수 없습니다.", "confidence": 0.0}
 
     prompt = _build_prompt(context)
     response = _call_llm(prompt)
@@ -151,14 +151,14 @@ def _build_prompt(ctx: dict) -> str:
 - 운영 중 최소 ROC-AUC: {roc_min}
 
 ## 판단 기준
-1. ROC-AUC가 챔피언보다 높거나 같으면 일반적으로 deploy
-2. 성능 차이가 0.001 미만이면 변경 비용 대비 효익이 낮음 → hold
-3. ROC-AUC < {baseline}이면 reject
-4. 첫 배포(챔피언 없음)는 {baseline} 충족 시 deploy
+1. ROC-AUC가 챔피언보다 **유의하게(0.001 초과)** 높으면 → deploy
+2. 성능 차이가 0.001 이하면 실제 트래픽으로 검증 필요 → start_ab_test
+3. ROC-AUC < {baseline}이면 → reject
+4. 첫 배포(챔피언 없음)는 {baseline} 충족 시 → deploy
 
 ## 응답 형식 (JSON만 반환)
 {{
-  "decision": "deploy" | "hold" | "reject",
+  "decision": "deploy" | "start_ab_test" | "reject",
   "reason": "한국어로 판단 근거 1~2문장",
   "confidence": 0.0~1.0
 }}"""
@@ -179,13 +179,16 @@ def _call_llm(prompt: str) -> str:
 def _parse_response(raw: str) -> dict:
     try:
         data = json.loads(raw)
+        decision = data.get("decision", "start_ab_test")
+        if decision not in ("deploy", "start_ab_test", "reject"):
+            decision = "start_ab_test"
         return {
-            "decision": data.get("decision", "hold"),
+            "decision": decision,
             "reason": data.get("reason", "판단 불가"),
             "confidence": float(data.get("confidence", 0.5)),
         }
     except Exception:
-        return {"decision": "hold", "reason": f"응답 파싱 실패: {raw[:100]}", "confidence": 0.0}
+        return {"decision": "start_ab_test", "reason": f"응답 파싱 실패: {raw[:100]}", "confidence": 0.0}
 
 
 def _print_judgment(version: str, result: dict) -> None:

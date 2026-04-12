@@ -96,6 +96,21 @@ def run(
         _abort("Deploy")
         return False
 
+    # Stage 4.5 — A/B Test (챌린저가 등록된 경우만 실행)
+    import json
+    from pathlib import Path
+    _flags = json.loads(Path("feature_flags/flags.json").read_text()) if Path("feature_flags/flags.json").exists() else {}
+    if _flags.get("challenger_model_version"):
+        print("\n" + "=" * 50)
+        print("  STAGE 4.5   —  A/B Test (Challenger Evaluation)")
+        print("=" * 50)
+        from pipeline.ab_test import run_ab_test, promote_challenger, reject_challenger
+        ab_result = run_ab_test()
+        if ab_result["promote"]:
+            promote_challenger(ab_result["challenger_version"])
+        else:
+            reject_challenger(ab_result["challenger_version"])
+
     # Stage 5 — Monitor
     print("\n" + "=" * 50)
     print("  STAGE 5 / 5  —  Monitor (Continuous Verification)")
