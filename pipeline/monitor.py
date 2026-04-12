@@ -106,10 +106,10 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
 
         if violation:
             print(f"\n  🚨 임계값 위반: {violation}")
-            # drift_agent로 원인 분석
+            # operations_agent로 원인 분석 + 액션 결정
             try:
-                from agents.drift_agent import analyze_drift
-                analyze_drift(
+                from agents.operations_agent import decide_action
+                decide_action(
                     model_version=version,
                     feature_names=list(split.X_train.columns),
                     psi_per_feature=metrics.get("psi_per_feature", {}),
@@ -117,7 +117,7 @@ def monitor(rounds: int = MONITOR_ROUNDS, inject_drift: bool = False) -> bool:
                     metrics=metrics,
                 )
             except Exception as e:
-                print(f"  ⚠️  drift_agent 분석 실패: {e}")
+                print(f"  ⚠️  operations_agent 분석 실패: {e}")
             _rollback(version)
             _trigger_retraining(entry["dataset_id"])
             # 배포 결정 회고 업데이트 — 드리프트 감지

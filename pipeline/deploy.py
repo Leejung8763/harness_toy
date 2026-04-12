@@ -45,7 +45,7 @@ def deploy(version: str | None = None, use_agent: bool = True) -> bool:
     decision = "deploy"  # fallback
     if use_agent:
         try:
-            from agents.deploy_agent import judge_deployment
+            from agents.pipeline_agent import judge_deployment
             judgment = judge_deployment(candidate["version"])
             decision = judgment["decision"]
             if decision == "reject":
