@@ -56,8 +56,9 @@ def _call_llm(prompt: str) -> str:
     return response.choices[0].message.content
 
 
-def _build_prompt(metrics: dict, model_plan: ModelPlan, train_plan: TrainPlan) -> str:
-    return f"""You are an ML quality gate expert.
+def _build_prompt(metrics: dict, model_plan: ModelPlan, train_plan: TrainPlan, hint: str = "") -> str:
+    hint_section = f"\nOrchestrator hint: {hint}" if hint else ""
+    return f"""You are an ML quality gate expert.{hint_section}
 
 Model: {model_plan.model_type}
 Training: {train_plan.cv_folds}-fold CV, metric={train_plan.primary_metric}
@@ -92,6 +93,7 @@ def judge_results(
     metrics: dict,
     model_plan: ModelPlan,
     train_plan: TrainPlan,
+    hint: str = "",
     use_agent: bool = True,
 ) -> TestVerdict:
     """
@@ -104,7 +106,7 @@ def judge_results(
         return _rule_based_verdict(metrics)
 
     try:
-        prompt = _build_prompt(metrics, model_plan, train_plan)
+        prompt = _build_prompt(metrics, model_plan, train_plan, hint)
         raw = _call_llm(prompt)
         data = json.loads(raw)
 

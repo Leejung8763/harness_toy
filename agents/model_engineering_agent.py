@@ -64,8 +64,10 @@ def _build_prompt(
     n_classes: int,
     class_balance: dict,
     preprocessing_plan: DataEngPlan,
+    hint: str = "",
 ) -> str:
-    return f"""You are an ML model selection expert.
+    hint_section = f"\nOrchestrator hint: {hint}" if hint else ""
+    return f"""You are an ML model selection expert.{hint_section}
 
 Dataset profile:
 - Samples: {n_samples}, Features: {n_features}, Classes: {n_classes}
@@ -92,6 +94,7 @@ def plan_model(
     n_classes: int,
     class_balance: dict,
     preprocessing_plan: DataEngPlan,
+    hint: str = "",
     use_agent: bool = True,
 ) -> ModelPlan:
     """
@@ -104,7 +107,7 @@ def plan_model(
         return ModelPlan(reason="use_agent=False (rule-based)", params=DEFAULT_PLAN.params)
 
     try:
-        prompt = _build_prompt(n_samples, n_features, n_classes, class_balance, preprocessing_plan)
+        prompt = _build_prompt(n_samples, n_features, n_classes, class_balance, preprocessing_plan, hint)
         raw = _call_llm(prompt)
         data = json.loads(raw)
 

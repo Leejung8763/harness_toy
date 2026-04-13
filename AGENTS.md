@@ -35,6 +35,7 @@ core/test.py               ← test_agent 판단 실행
 
 | 에이전트 | 파일 | 판단 내용 |
 |---------|------|---------|
+| Orchestrator Agent | `agents/orchestrator_agent.py` | 파이프라인 실행 계획 + 하위 에이전트 힌트 생성 |
 | Data Engineering Agent | `agents/data_engineering_agent.py` | 피처 선택, 전처리 전략 |
 | Model Engineering Agent | `agents/model_engineering_agent.py` | 모델 타입, 하이퍼파라미터 후보 |
 | Train Agent | `agents/train_agent.py` | CV 전략, early stopping |

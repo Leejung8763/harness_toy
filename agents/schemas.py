@@ -11,7 +11,22 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+
+
+# ── 0. Orchestrator ───────────────────────────────────────────────────────────
+
+class OrchestratorPlan(BaseModel):
+    """orchestrator_agent의 반환 계약"""
+
+    goal: str = "ML classification"
+    stages: list[Literal["data_eng", "model_eng", "train", "test"]] = Field(
+        default=["data_eng", "model_eng", "train", "test"]
+    )
+    hints: dict[str, str] = Field(default_factory=dict)
+    """각 단계에 전달할 힌트. key = 단계명, value = 자연어 힌트"""
+    reason: str = "default"
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 # ── 1. Data Engineering ───────────────────────────────────────────────────────

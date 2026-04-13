@@ -58,13 +58,15 @@ def _call_llm(prompt: str) -> str:
     return response.choices[0].message.content
 
 
-def _build_prompt(X: pd.DataFrame, y: pd.Series) -> str:
+def _build_prompt(X: pd.DataFrame, y: pd.Series, hint: str = "") -> str:
     stats = X.describe().to_string()
     missing = X.isnull().sum().to_string()
     n_samples, n_features = X.shape
     class_balance = y.value_counts(normalize=True).to_dict()
 
-    return f"""You are a data engineering expert for ML pipelines.
+    hint_section = f"\nOrchestrator hint: {hint}" if hint else ""
+
+    return f"""You are a data engineering expert for ML pipelines.{hint_section}
 
 Dataset stats:
 - Samples: {n_samples}, Features: {n_features}
@@ -88,6 +90,7 @@ Available columns: {list(X.columns)}
 def plan_preprocessing(
     X: pd.DataFrame,
     y: pd.Series,
+    hint: str = "",
     use_agent: bool = True,
 ) -> DataEngPlan:
     """
@@ -100,7 +103,7 @@ def plan_preprocessing(
         return DataEngPlan(reason="use_agent=False (rule-based)")
 
     try:
-        prompt = _build_prompt(X, y)
+        prompt = _build_prompt(X, y, hint)
         raw = _call_llm(prompt)
         data = json.loads(raw)
 

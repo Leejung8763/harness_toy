@@ -62,8 +62,10 @@ def _build_prompt(
     n_classes: int,
     class_balance: dict,
     model_plan: ModelPlan,
+    hint: str = "",
 ) -> str:
-    return f"""You are an ML training strategy expert.
+    hint_section = f"\nOrchestrator hint: {hint}" if hint else ""
+    return f"""You are an ML training strategy expert.{hint_section}
 
 Dataset: {n_samples} samples, {n_classes} classes
 Class balance: {class_balance}
@@ -84,6 +86,7 @@ def plan_training(
     n_classes: int,
     class_balance: dict,
     model_plan: ModelPlan,
+    hint: str = "",
     use_agent: bool = True,
 ) -> TrainPlan:
     """
@@ -96,7 +99,7 @@ def plan_training(
         return TrainPlan(reason="use_agent=False (rule-based)")
 
     try:
-        prompt = _build_prompt(n_samples, n_classes, class_balance, model_plan)
+        prompt = _build_prompt(n_samples, n_classes, class_balance, model_plan, hint)
         raw = _call_llm(prompt)
         data = json.loads(raw)
 
