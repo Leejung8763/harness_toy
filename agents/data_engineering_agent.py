@@ -23,9 +23,12 @@ import numpy as np
 import pandas as pd
 from pydantic import ValidationError
 
+from agents._spec_loader import load as _load_spec
 from agents.schemas import DataEngPlan
 
 DEFAULT_PLAN = DataEngPlan(reason="default plan (fallback)")
+
+_SPEC = _load_spec("data_engineering_agent")
 
 
 def _get_github_token() -> str:
@@ -42,9 +45,13 @@ def _get_llm_client():
 
 def _call_llm(prompt: str) -> str:
     client = _get_llm_client()
+    messages = []
+    if _SPEC:
+        messages.append({"role": "system", "content": _SPEC})
+    messages.append({"role": "user", "content": prompt})
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
         max_tokens=400,
         response_format={"type": "json_object"},
     )

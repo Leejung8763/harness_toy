@@ -20,12 +20,15 @@ import subprocess
 
 from pydantic import ValidationError
 
+from agents._spec_loader import load as _load_spec
 from agents.schemas import DataEngPlan, ModelPlan
 
 DEFAULT_PLAN = ModelPlan(
     params={"learning_rate": 0.05, "max_iter": 200, "max_depth": 6, "min_samples_leaf": 20},
     reason="default plan (fallback)",
 )
+
+_SPEC = _load_spec("model_engineering_agent")
 
 
 def _get_github_token() -> str:
@@ -42,9 +45,13 @@ def _get_llm_client():
 
 def _call_llm(prompt: str) -> str:
     client = _get_llm_client()
+    messages = []
+    if _SPEC:
+        messages.append({"role": "system", "content": _SPEC})
+    messages.append({"role": "user", "content": prompt})
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
         max_tokens=400,
         response_format={"type": "json_object"},
     )
