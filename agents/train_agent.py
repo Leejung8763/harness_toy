@@ -8,10 +8,11 @@ agents/train_agent.py — 학습 전략 결정 에이전트
   - 평가 지표 (primary_metric)
 
 하네스 역할:
+  - LLM 반환값은 TrainPlan(Pydantic)으로 즉시 검증 — 잘못된 값은 경계에서 차단
   - LLM 실패 시 DEFAULT_PLAN으로 즉시 fallback
   - 실제 학습 실행은 core/train.py가 담당
 
-참고: agents/AGENTS_SPEC.md
+참고: agents/AGENTS_SPEC.md, agents/schemas.py
 """
 
 from __future__ import annotations
@@ -19,14 +20,11 @@ from __future__ import annotations
 import json
 import subprocess
 
-DEFAULT_PLAN: dict = {
-    "cv_folds": 5,
-    "stratify": True,
-    "early_stopping": False,
-    "primary_metric": "roc_auc",
-    "reason": "default plan (fallback)",
-    "confidence": 1.0,
-}
+from pydantic import ValidationError
+
+from agents.schemas import ModelPlan, TrainPlan
+
+DEFAULT_PLAN = TrainPlan(reason="default plan (fallback)")
 
 
 def _get_github_token() -> str:
@@ -56,13 +54,13 @@ def _build_prompt(
     n_samples: int,
     n_classes: int,
     class_balance: dict,
-    model_plan: dict,
+    model_plan: ModelPlan,
 ) -> str:
     return f"""You are an ML training strategy expert.
 
 Dataset: {n_samples} samples, {n_classes} classes
 Class balance: {class_balance}
-Model: {model_plan.get('model_type')} with params {model_plan.get('params')}
+Model: {model_plan.model_type} with params {model_plan.params}
 
 Decide the training strategy. Return JSON:
 - "cv_folds": int (3-10), more folds for small datasets
@@ -78,32 +76,26 @@ def plan_training(
     n_samples: int,
     n_classes: int,
     class_balance: dict,
-    model_plan: dict,
+    model_plan: ModelPlan,
     use_agent: bool = True,
-) -> dict:
+) -> TrainPlan:
     """
     학습 전략을 결정합니다.
 
     Returns:
-        dict with keys: cv_folds, stratify, early_stopping, primary_metric, reason, confidence
+        TrainPlan (Pydantic) — 하네스가 계약 검증 완료된 판단
     """
     if not use_agent:
-        return {**DEFAULT_PLAN, "reason": "use_agent=False (rule-based)"}
+        return TrainPlan(reason="use_agent=False (rule-based)")
 
     try:
         prompt = _build_prompt(n_samples, n_classes, class_balance, model_plan)
         raw = _call_llm(prompt)
-        plan = json.loads(raw)
+        data = json.loads(raw)
 
-        plan["cv_folds"] = max(3, min(10, int(plan.get("cv_folds", 5))))
-        plan["stratify"] = bool(plan.get("stratify", True))
-        plan["early_stopping"] = bool(plan.get("early_stopping", False))
-        plan["primary_metric"] = plan.get("primary_metric", "roc_auc") if plan.get("primary_metric") in ("roc_auc", "f1", "accuracy") else "roc_auc"
-        plan.setdefault("reason", "LLM decision")
-        plan.setdefault("confidence", 0.8)
+        # ── Pydantic 계약 검증: cv_folds 범위(3-10), metric 허용값 등 즉시 차단 ──
+        return TrainPlan(**data)
 
-        return plan
-
-    except Exception as e:
+    except (ValidationError, Exception) as e:
         print(f"[train_agent] fallback: {e}")
-        return {**DEFAULT_PLAN, "reason": f"fallback due to: {e}"}
+        return TrainPlan(reason=f"fallback due to: {e}")

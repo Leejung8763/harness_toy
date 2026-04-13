@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from sklearn.base import BaseEstimator
 
+from agents.schemas import ModelPlan
 
-def build(plan: dict) -> BaseEstimator:
+
+def build(plan: ModelPlan) -> BaseEstimator:
     """
     agent 판단에 따라 모델 인스턴스를 생성합니다.
 
@@ -19,8 +21,8 @@ def build(plan: dict) -> BaseEstimator:
     Returns:
         sklearn-compatible estimator
     """
-    model_type = plan.get("model_type", "hist_gradient_boosting")
-    params = plan.get("params", {})
+    model_type = plan.model_type
+    params = plan.params
 
     print(f"  [model_eng] type={model_type}, params={params}")
 

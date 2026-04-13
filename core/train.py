@@ -11,12 +11,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
+from agents.schemas import TrainPlan
+
 
 def run(
     model: BaseEstimator,
     X: pd.DataFrame,
     y: pd.Series,
-    plan: dict,
+    plan: TrainPlan,
 ) -> dict:
     """
     agent 판단에 따라 모델을 학습합니다.
@@ -30,9 +32,9 @@ def run(
     Returns:
         dict with keys: cv_scores, mean_score, std_score, trained_model
     """
-    cv_folds = plan.get("cv_folds", 5)
-    stratify = plan.get("stratify", True)
-    metric = plan.get("primary_metric", "roc_auc")
+    cv_folds = plan.cv_folds
+    stratify = plan.stratify
+    metric = plan.primary_metric
 
     scoring = metric
     if metric == "roc_auc" and len(np.unique(y)) > 2:

@@ -7,28 +7,25 @@ agents/data_engineering_agent.py — 데이터 전처리 전략 결정 에이전
   - 결측치 처리 방식 (median / mean / drop)
 
 하네스 역할:
+  - LLM 반환값은 DataEngPlan(Pydantic)으로 즉시 검증 — 잘못된 값은 경계에서 차단
   - LLM 실패 시 DEFAULT_PLAN으로 즉시 fallback
   - 실제 전처리 실행은 core/data_engineering.py가 담당
 
-참고: agents/AGENTS_SPEC.md
+참고: agents/AGENTS_SPEC.md, agents/schemas.py
 """
 
 from __future__ import annotations
 
 import json
 import subprocess
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from pydantic import ValidationError
 
-DEFAULT_PLAN: dict = {
-    "feature_exclusions": [],
-    "scaler": "standard",
-    "impute_strategy": "median",
-    "reason": "default plan (fallback)",
-    "confidence": 1.0,
-}
+from agents.schemas import DataEngPlan
+
+DEFAULT_PLAN = DataEngPlan(reason="default plan (fallback)")
 
 
 def _get_github_token() -> str:
@@ -85,34 +82,29 @@ def plan_preprocessing(
     X: pd.DataFrame,
     y: pd.Series,
     use_agent: bool = True,
-) -> dict:
+) -> DataEngPlan:
     """
     데이터 전처리 전략을 결정합니다.
 
     Returns:
-        dict with keys: feature_exclusions, scaler, impute_strategy, reason, confidence
+        DataEngPlan (Pydantic) — 하네스가 계약 검증 완료된 판단
     """
     if not use_agent:
-        return {**DEFAULT_PLAN, "reason": "use_agent=False (rule-based)"}
+        return DataEngPlan(reason="use_agent=False (rule-based)")
 
     try:
         prompt = _build_prompt(X, y)
         raw = _call_llm(prompt)
-        plan = json.loads(raw)
+        data = json.loads(raw)
 
-        # 유효성 검증
-        plan.setdefault("feature_exclusions", [])
-        plan["scaler"] = plan.get("scaler", "standard") if plan.get("scaler") in ("standard", "minmax", "none") else "standard"
-        plan["impute_strategy"] = plan.get("impute_strategy", "median") if plan.get("impute_strategy") in ("median", "mean", "drop") else "median"
-        plan.setdefault("reason", "LLM decision")
-        plan.setdefault("confidence", 0.8)
-
-        # 실제 존재하는 컬럼만 제외 목록에 포함
+        # 실제 존재하는 컬럼만 제외 목록에 포함 (하네스 규칙)
         valid_cols = set(X.columns)
-        plan["feature_exclusions"] = [c for c in plan["feature_exclusions"] if c in valid_cols]
+        if "feature_exclusions" in data:
+            data["feature_exclusions"] = [c for c in data["feature_exclusions"] if c in valid_cols]
 
-        return plan
+        # ── Pydantic 계약 검증: 잘못된 값은 여기서 즉시 차단 ──
+        return DataEngPlan(**data)
 
-    except Exception as e:
+    except (ValidationError, Exception) as e:
         print(f"[data_engineering_agent] fallback: {e}")
-        return {**DEFAULT_PLAN, "reason": f"fallback due to: {e}"}
+        return DataEngPlan(reason=f"fallback due to: {e}")

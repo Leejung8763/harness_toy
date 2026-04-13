@@ -45,7 +45,7 @@ def run(
     # ── 2. Data Engineering ────────────────────────────────────────
     print("\n[2/4] Data Engineering...")
     de_plan = data_engineering_agent.plan_preprocessing(X, y, use_agent=use_agent)
-    print(f"  agent decision: scaler={de_plan['scaler']}, impute={de_plan['impute_strategy']}, reason={de_plan['reason']}")
+    print(f"  agent decision: scaler={de_plan.scaler}, impute={de_plan.impute_strategy}, reason={de_plan.reason}")
     X_processed, y_processed = data_engineering.run(X, y, de_plan)
 
     # ── 3. Model Engineering ───────────────────────────────────────
@@ -58,7 +58,7 @@ def run(
         preprocessing_plan=de_plan,
         use_agent=use_agent,
     )
-    print(f"  agent decision: model={me_plan['model_type']}, reason={me_plan['reason']}")
+    print(f"  agent decision: model={me_plan.model_type}, reason={me_plan.reason}")
     model = model_engineering.build(me_plan)
 
     # ── 4. Train ───────────────────────────────────────────────────
@@ -70,23 +70,23 @@ def run(
         model_plan=me_plan,
         use_agent=use_agent,
     )
-    print(f"  agent decision: cv={tr_plan['cv_folds']}-fold, stratify={tr_plan['stratify']}, reason={tr_plan['reason']}")
+    print(f"  agent decision: cv={tr_plan.cv_folds}-fold, stratify={tr_plan.stratify}, reason={tr_plan.reason}")
     train_result = train.run(model, X_processed, y_processed, tr_plan)
 
     # ── 5. Test ────────────────────────────────────────────────────
     print("\n[4b/4] Testing...")
     metrics = test.run(train_result["trained_model"], X_processed, y_processed)
     verdict = test_agent.judge_results(metrics, me_plan, tr_plan, use_agent=use_agent)
-    print(f"  agent verdict: {verdict['verdict'].upper()} — {verdict['reason']}")
-    if verdict.get("suggestions"):
-        for s in verdict["suggestions"]:
+    print(f"  agent verdict: {verdict.verdict.upper()} — {verdict.reason}")
+    if verdict.suggestions:
+        for s in verdict.suggestions:
             print(f"  💡 {s}")
 
     # ── 요약 ───────────────────────────────────────────────────────
     print(f"\n{'='*50}")
-    status = "✅ PASS" if verdict["verdict"] == "pass" else "❌ FAIL"
+    status = "✅ PASS" if verdict.verdict == "pass" else "❌ FAIL"
     print(f" {status}")
-    print(f" model    : {me_plan['model_type']}")
+    print(f" model    : {me_plan.model_type}")
     print(f" roc_auc  : {metrics['roc_auc']:.4f}")
     print(f" f1       : {metrics['f1']:.4f}")
     print(f" accuracy : {metrics['accuracy']:.4f}")
@@ -94,14 +94,14 @@ def run(
     print(f"{'='*50}\n")
 
     return {
-        "verdict": verdict["verdict"],
+        "verdict": verdict.verdict,
         "metrics": metrics,
         "train_result": {k: v for k, v in train_result.items() if k != "trained_model"},
         "plans": {
-            "data_engineering": de_plan,
-            "model_engineering": me_plan,
-            "train": tr_plan,
-            "test_verdict": verdict,
+            "data_engineering": de_plan.model_dump(),
+            "model_engineering": me_plan.model_dump(),
+            "train": tr_plan.model_dump(),
+            "test_verdict": verdict.model_dump(),
         },
     }
 

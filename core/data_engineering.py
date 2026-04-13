@@ -10,11 +10,13 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
+from agents.schemas import DataEngPlan
+
 
 def run(
     X: pd.DataFrame,
     y: pd.Series,
-    plan: dict,
+    plan: DataEngPlan,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """
     agent 판단에 따라 전처리를 실행합니다.
@@ -29,30 +31,25 @@ def run(
     """
     X = X.copy()
 
-    # 1. 피처 제외
-    exclusions = [c for c in plan.get("feature_exclusions", []) if c in X.columns]
+    exclusions = [c for c in plan.feature_exclusions if c in X.columns]
     if exclusions:
         X = X.drop(columns=exclusions)
         print(f"  [data_eng] dropped features: {exclusions}")
 
-    # 2. 결측치 처리
-    strategy = plan.get("impute_strategy", "median")
-    if strategy == "median":
+    if plan.impute_strategy == "median":
         X = X.fillna(X.median(numeric_only=True))
-    elif strategy == "mean":
+    elif plan.impute_strategy == "mean":
         X = X.fillna(X.mean(numeric_only=True))
-    elif strategy == "drop":
+    elif plan.impute_strategy == "drop":
         X = X.dropna()
         y = y.loc[X.index]
 
-    # 3. 스케일링
-    scaler_type = plan.get("scaler", "standard")
-    if scaler_type == "standard":
+    if plan.scaler == "standard":
         scaler = StandardScaler()
         X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns, index=X.index)
-    elif scaler_type == "minmax":
+    elif plan.scaler == "minmax":
         scaler = MinMaxScaler()
         X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns, index=X.index)
 
-    print(f"  [data_eng] shape={X.shape}, scaler={scaler_type}, impute={strategy}")
+    print(f"  [data_eng] shape={X.shape}, scaler={plan.scaler}, impute={plan.impute_strategy}")
     return X, y
