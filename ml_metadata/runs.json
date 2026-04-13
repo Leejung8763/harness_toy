@@ -1,7 +1,7 @@
 [
   {
     "stage": "data_engineering",
-    "logged_at": "2026-04-12T02:45:58.225018",
+    "logged_at": "2026-04-12T18:21:52.374998",
     "dataset_id": 44089,
     "dataset_name": "credit",
     "feature_version": "v1",
@@ -10,23 +10,23 @@
     "n_train": 13371,
     "n_test": 3343,
     "skipped": false,
-    "created_at": "2026-04-12T02:45:58.224735"
+    "created_at": "2026-04-12T18:21:52.374892"
   },
   {
     "stage": "training",
-    "logged_at": "2026-04-12T02:46:00.574437",
+    "logged_at": "2026-04-12T18:21:54.699213",
     "model_version": "v1",
     "dataset_id": 44089,
     "dataset_name": "credit",
     "feature_version": "v1",
     "champion_model": "hist_gradient_boosting",
     "roc_auc": 0.8622,
-    "fit_time_sec": 0.57,
+    "fit_time_sec": 0.43,
     "n_challengers": 5
   },
   {
     "stage": "monitoring",
-    "logged_at": "2026-04-12T02:46:04.033301",
+    "logged_at": "2026-04-12T18:21:57.338153",
     "model_version": "v1",
     "round": 1,
     "roc_auc": 0.8853,
@@ -63,7 +63,7 @@
   },
   {
     "stage": "monitoring",
-    "logged_at": "2026-04-12T02:46:04.354627",
+    "logged_at": "2026-04-12T18:21:57.661788",
     "model_version": "v1",
     "round": 2,
     "roc_auc": 0.8659,
@@ -100,7 +100,7 @@
   },
   {
     "stage": "monitoring",
-    "logged_at": "2026-04-12T02:46:04.678334",
+    "logged_at": "2026-04-12T18:21:57.986115",
     "model_version": "v1",
     "round": 3,
     "roc_auc": 0.8733,
@@ -137,7 +137,7 @@
   },
   {
     "stage": "monitoring",
-    "logged_at": "2026-04-12T02:46:05.001465",
+    "logged_at": "2026-04-12T18:21:58.310984",
     "model_version": "v1",
     "round": 4,
     "roc_auc": 0.9147,
@@ -174,7 +174,7 @@
   },
   {
     "stage": "monitoring",
-    "logged_at": "2026-04-12T02:46:05.327590",
+    "logged_at": "2026-04-12T18:21:58.629714",
     "model_version": "v1",
     "round": 5,
     "roc_auc": 0.9106,
@@ -208,203 +208,5 @@
     },
     "violation": null,
     "inject_drift": false
-  },
-  {
-    "stage": "training",
-    "logged_at": "2026-04-12T02:46:46.519094",
-    "model_version": "v2",
-    "dataset_id": 44089,
-    "dataset_name": "credit",
-    "feature_version": "v1",
-    "champion_model": "hist_gradient_boosting",
-    "roc_auc": 0.8622,
-    "fit_time_sec": 0.44,
-    "n_challengers": 5
-  },
-  {
-    "stage": "monitoring",
-    "logged_at": "2026-04-12T02:47:58.227342",
-    "model_version": "v1",
-    "round": 1,
-    "roc_auc": 0.5833,
-    "error_rate": 0.442,
-    "psi_mean": 1.46,
-    "psi_max": 7.7257,
-    "ks_pvalue_min": 0.0,
-    "psi_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0368,
-      "age": 0.0502,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0261,
-      "DebtRatio": 0.0368,
-      "MonthlyIncome": 0.3355,
-      "NumberOfOpenCreditLinesAndLoans": 0.1632,
-      "NumberOfTimes90DaysLate": 0.0055,
-      "NumberRealEstateLoansOrLines": 6.0939,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.1259,
-      "NumberOfDependents": 7.7257
-    },
-    "ks_pvalue_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0,
-      "age": 0.9351,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0,
-      "DebtRatio": 0.0,
-      "MonthlyIncome": 0.1294,
-      "NumberOfOpenCreditLinesAndLoans": 0.1497,
-      "NumberOfTimes90DaysLate": 0.0,
-      "NumberRealEstateLoansOrLines": 0.0,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.0,
-      "NumberOfDependents": 0.0
-    },
-    "violation": "roc_auc=0.5833 < threshold=0.75",
-    "inject_drift": true
-  },
-  {
-    "stage": "monitoring",
-    "logged_at": "2026-04-12T02:48:03.180119",
-    "model_version": "v1",
-    "event": "drift_analysis",
-    "roc_auc": 0.5833,
-    "error_rate": 0.442,
-    "psi_mean": 1.46,
-    "psi_max": 7.7257,
-    "ks_pvalue_min": 0.0,
-    "psi_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0368,
-      "age": 0.0502,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0261,
-      "DebtRatio": 0.0368,
-      "MonthlyIncome": 0.3355,
-      "NumberOfOpenCreditLinesAndLoans": 0.1632,
-      "NumberOfTimes90DaysLate": 0.0055,
-      "NumberRealEstateLoansOrLines": 6.0939,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.1259,
-      "NumberOfDependents": 7.7257
-    },
-    "ks_pvalue_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0,
-      "age": 0.9351,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0,
-      "DebtRatio": 0.0,
-      "MonthlyIncome": 0.1294,
-      "NumberOfOpenCreditLinesAndLoans": 0.1497,
-      "NumberOfTimes90DaysLate": 0.0,
-      "NumberRealEstateLoansOrLines": 0.0,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.0,
-      "NumberOfDependents": 0.0
-    },
-    "drift_analysis": {
-      "affected_features": [
-        "NumberOfDependents",
-        "NumberRealEstateLoansOrLines",
-        "MonthlyIncome"
-      ],
-      "cause": "\uc8fc\uc694 \ud53c\ucc98\uc778 NumberOfDependents\uc640 NumberRealEstateLoansOrLines\uc5d0\uc11c \uc720\uc758\ubbf8\ud55c \ub4dc\ub9ac\ud504\ud2b8\uac00 \ubc1c\uc0dd\ud558\uc5ec \ubaa8\ub378\uc758 \uc608\uce21 \uc131\ub2a5 \uc800\ud558\ub97c \ucd08\ub798\ud558\uace0 \uc788\uc2b5\ub2c8\ub2e4.",
-      "recommendation": "\uc774\ub7ec\ud55c \ud53c\ucc98\uc758 \ubd84\ud3ec \ubcc0\ud654\ub97c \ubc18\uc601\ud558\uc5ec \ubaa8\ub378\uc744 \uc7ac\ud559\uc2b5\ud560 \ud544\uc694\uac00 \uc788\uc2b5\ub2c8\ub2e4."
-    }
-  },
-  {
-    "stage": "training",
-    "logged_at": "2026-04-12T02:48:08.747686",
-    "model_version": "v3",
-    "dataset_id": 44089,
-    "dataset_name": "credit",
-    "feature_version": "v1",
-    "champion_model": "hist_gradient_boosting",
-    "roc_auc": 0.8622,
-    "fit_time_sec": 0.56,
-    "n_challengers": 5
-  },
-  {
-    "stage": "monitoring",
-    "logged_at": "2026-04-12T03:48:58.719091",
-    "model_version": "v1",
-    "round": 1,
-    "roc_auc": 0.5833,
-    "error_rate": 0.442,
-    "psi_mean": 1.46,
-    "psi_max": 7.7257,
-    "ks_pvalue_min": 0.0,
-    "psi_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0368,
-      "age": 0.0502,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0261,
-      "DebtRatio": 0.0368,
-      "MonthlyIncome": 0.3355,
-      "NumberOfOpenCreditLinesAndLoans": 0.1632,
-      "NumberOfTimes90DaysLate": 0.0055,
-      "NumberRealEstateLoansOrLines": 6.0939,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.1259,
-      "NumberOfDependents": 7.7257
-    },
-    "ks_pvalue_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0,
-      "age": 0.9351,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0,
-      "DebtRatio": 0.0,
-      "MonthlyIncome": 0.1294,
-      "NumberOfOpenCreditLinesAndLoans": 0.1497,
-      "NumberOfTimes90DaysLate": 0.0,
-      "NumberRealEstateLoansOrLines": 0.0,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.0,
-      "NumberOfDependents": 0.0
-    },
-    "violation": "roc_auc=0.5833 < threshold=0.75",
-    "inject_drift": true
-  },
-  {
-    "stage": "monitoring",
-    "logged_at": "2026-04-12T03:49:03.804386",
-    "model_version": "v1",
-    "event": "drift_analysis",
-    "roc_auc": 0.5833,
-    "error_rate": 0.442,
-    "psi_mean": 1.46,
-    "psi_max": 7.7257,
-    "ks_pvalue_min": 0.0,
-    "psi_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0368,
-      "age": 0.0502,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0261,
-      "DebtRatio": 0.0368,
-      "MonthlyIncome": 0.3355,
-      "NumberOfOpenCreditLinesAndLoans": 0.1632,
-      "NumberOfTimes90DaysLate": 0.0055,
-      "NumberRealEstateLoansOrLines": 6.0939,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.1259,
-      "NumberOfDependents": 7.7257
-    },
-    "ks_pvalue_per_feature": {
-      "RevolvingUtilizationOfUnsecuredLines": 0.0,
-      "age": 0.9351,
-      "NumberOfTime30-59DaysPastDueNotWorse": 0.0,
-      "DebtRatio": 0.0,
-      "MonthlyIncome": 0.1294,
-      "NumberOfOpenCreditLinesAndLoans": 0.1497,
-      "NumberOfTimes90DaysLate": 0.0,
-      "NumberRealEstateLoansOrLines": 0.0,
-      "NumberOfTime60-89DaysPastDueNotWorse": 0.0,
-      "NumberOfDependents": 0.0
-    },
-    "drift_analysis": {
-      "affected_features": [
-        "NumberOfDependents",
-        "NumberRealEstateLoansOrLines",
-        "MonthlyIncome"
-      ],
-      "cause": "\uc8fc\uc694 \ud53c\ucc98\uc778 NumberOfDependents\uc640 NumberRealEstateLoansOrLines\uc5d0\uc11c \uc720\uc758\ubbf8\ud55c \ub4dc\ub9ac\ud504\ud2b8\uac00 \ubc1c\uc0dd\ud558\uc5ec \ubaa8\ub378\uc758 \uc608\uce21 \uc131\ub2a5\uc774 \uc800\ud558\ub41c \uac83\uc73c\ub85c \ucd94\uc815\ub429\ub2c8\ub2e4.",
-      "recommendation": "\uc774\ub4e4 \ud53c\ucc98\uc758 \ucd5c\uc2e0 \ub370\uc774\ud130\ub97c \ubc18\uc601\ud558\uc5ec \ubaa8\ub378\uc744 \uc7ac\ud559\uc2b5\ud558\ub294 \uac83\uc774 \ud544\uc694\ud569\ub2c8\ub2e4."
-    }
-  },
-  {
-    "stage": "training",
-    "logged_at": "2026-04-12T03:49:08.908345",
-    "model_version": "v4",
-    "dataset_id": 44089,
-    "dataset_name": "credit",
-    "feature_version": "v1",
-    "champion_model": "hist_gradient_boosting",
-    "roc_auc": 0.8622,
-    "fit_time_sec": 0.55,
-    "n_challengers": 5
   }
 ]
